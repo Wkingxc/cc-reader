@@ -10,3 +10,42 @@ body {
   margin: 0;
   font-family: ui-monospace, Menlo, Monaco, "Cascadia Code", "Courier New", monospace;
 }
+
+.prose.prose-invert {
+  color: #d1d5db;
+  max-width: none;
+}
+
+.prose.prose-invert h1,
+.prose.prose-invert h2,
+.prose.prose-invert h3,
+.prose.prose-invert h4 {
+  color: #f3f4f6;
+}
+
+.prose.prose-invert strong {
+  color: #f3f4f6;
+}
+
+.prose.prose-invert blockquote {
+  color: #9ca3af;
+  border-left-color: #4b5563;
+}
+
+.prose.prose-invert hr {
+  border-color: #374151;
+}
+
+.prose.prose-invert li::marker {
+  color: #6b7280;
+}
+
+.prose.prose-invert ul,
+.prose.prose-invert ol {
+  padding-left: 1.5em;
+}
+
+.prose.prose-invert p {
+  margin: 0.5em 0;
+  line-height: 1.7;
+}
