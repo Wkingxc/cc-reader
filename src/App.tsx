@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useRef } from "react";
 import type { Message, SessionInfo, TabData } from "./types/message";
 import { getUserQuestions, extractTextContent } from "./utils/parseContent";
 import { useFontSize } from "./hooks/useFontSize";
+import { useTheme } from "./hooks/useTheme";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { useScrollTo } from "./hooks/useScrollTo";
 import Sidebar from "./components/Sidebar";
@@ -17,6 +18,7 @@ export default function App() {
   const [questionNavCollapsed, setQuestionNavCollapsed] = useState(false);
 
   const { fontSize, increase, decrease } = useFontSize();
+  const { isDark, toggle: toggleTheme } = useTheme();
   const { scrollTo } = useScrollTo();
 
   const activeTabIdRef = useRef(activeTabId);
@@ -130,7 +132,7 @@ export default function App() {
   const title = activeTab ? activeTab.session.firstMessage : "Select a session";
 
   return (
-    <div className="flex h-screen bg-white text-gray-900">
+    <div className="flex h-screen bg-base text-ink transition-colors">
       <Sidebar
         onSelectSession={handleOpenTab}
         activeSessionId={activeTabId}
@@ -153,6 +155,8 @@ export default function App() {
           onIncrease={increase}
           onDecrease={decrease}
           connected={connected}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
         />
 
         <MessageList
