@@ -39,6 +39,8 @@ export interface ToolCall {
   id: string;
   name: string;
   input: Record<string, unknown>;
+  result?: string;
+  isError?: boolean;
 }
 
 export interface TabData {

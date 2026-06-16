@@ -28,7 +28,7 @@ export function extractToolCalls(content: string | ContentBlock[]): ContentBlock
   return content.filter((b) => b.type === "tool_use");
 }
 
-export function getToolSummary(block: ContentBlock): string {
+export function getToolSummary(block: { name?: string; input?: Record<string, unknown> }): string {
   const name = block.name || "Unknown";
   const input = block.input || {};
 

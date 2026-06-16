@@ -1,29 +1,29 @@
 import { useState } from "react";
-import type { ContentBlock } from "../types/message";
+import type { ToolCall } from "../types/message";
 import { getToolSummary } from "../utils/parseContent";
 
 interface Props {
-  block: ContentBlock;
+  tool: ToolCall;
 }
 
-export default function ToolCallBlock({ block }: Props) {
+export default function ToolCallBlock({ tool }: Props) {
   const [expanded, setExpanded] = useState(false);
-  const summary = getToolSummary(block);
+  const summary = getToolSummary(tool);
 
   return (
-    <div className="my-2 border border-dashed border-gray-300 rounded-md">
+    <div className="my-2 border border-dashed border-edge rounded-md">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:text-gray-700 flex items-center gap-2 font-mono"
+        className="w-full text-left px-3 py-2 text-sm text-dim hover:text-accent flex items-center gap-2 font-mono transition-colors"
       >
         <span className="text-xs">{expanded ? "▼" : "▶"}</span>
-        <span className="text-gray-400">⚡</span>
-        <span className="truncate">{summary}</span>
+        <span className="text-accent">⚡</span>
+        <span className="truncate flex-1">{summary}</span>
       </button>
       {expanded && (
         <div className="px-3 pb-3 text-sm">
-          <pre className="bg-gray-100 rounded p-3 overflow-x-auto text-gray-700 text-xs leading-relaxed">
-            {JSON.stringify(block.input, null, 2)}
+          <pre className="bg-base border border-edge rounded p-3 overflow-x-auto text-ink text-xs leading-relaxed">
+            {JSON.stringify(tool.input, null, 2)}
           </pre>
         </div>
       )}

@@ -22,7 +22,13 @@ export interface ParsedMessage {
   type: "user" | "assistant";
   timestamp: string;
   content: string | Array<Record<string, unknown>>;
-  toolCalls?: Array<{ id: string; name: string; input: Record<string, unknown> }>;
+  toolCalls?: Array<{
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+    result?: string;
+    isError?: boolean;
+  }>;
   model?: string;
 }
 
@@ -53,7 +59,41 @@ export function parseLine(line: string): RawJsonlEntry | null {
   }
 }
 
-export function entryToMessage(entry: RawJsonlEntry): ParsedMessage | null {
+function extractToolResultText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((b) => {
+        if (typeof b === "string") return b;
+        if (b && typeof b === "object" && "text" in b) return String((b as Record<string, unknown>).text ?? "");
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+  return "";
+}
+
+function buildToolResultMap(entries: RawJsonlEntry[]): Map<string, { text: string; isError: boolean }> {
+  const map = new Map<string, { text: string; isError: boolean }>();
+  for (const entry of entries) {
+    if (entry.type !== "user" || !Array.isArray(entry.message?.content)) continue;
+    for (const b of entry.message!.content as Array<Record<string, unknown>>) {
+      if (b.type === "tool_result" && typeof b.tool_use_id === "string") {
+        map.set(b.tool_use_id, {
+          text: extractToolResultText(b.content),
+          isError: b.is_error === true,
+        });
+      }
+    }
+  }
+  return map;
+}
+
+export function entryToMessage(
+  entry: RawJsonlEntry,
+  resultMap?: Map<string, { text: string; isError: boolean }>
+): ParsedMessage | null {
   if (!entry.uuid || !entry.type || !entry.message) return null;
   if (entry.type !== "user" && entry.type !== "assistant") return null;
   if (entry.isSidechain) return null;
@@ -76,11 +116,17 @@ export function entryToMessage(entry: RawJsonlEntry): ParsedMessage | null {
   if (entry.type === "assistant" && Array.isArray(entry.message.content)) {
     const toolCalls = (entry.message.content as Array<Record<string, unknown>>)
       .filter((b) => b.type === "tool_use")
-      .map((b) => ({
-        id: (b.id as string) || "",
-        name: (b.name as string) || "",
-        input: (b.input as Record<string, unknown>) || {},
-      }));
+      .map((b) => {
+        const id = (b.id as string) || "";
+        const res = resultMap?.get(id);
+        return {
+          id,
+          name: (b.name as string) || "",
+          input: (b.input as Record<string, unknown>) || {},
+          result: res?.text,
+          isError: res?.isError,
+        };
+      });
     if (toolCalls.length > 0) {
       msg.toolCalls = toolCalls;
     }
@@ -102,6 +148,9 @@ function mergeMessages(raw: ParsedMessage[]): ParsedMessage[] {
       prev.timestamp = msg.timestamp || prev.timestamp;
       if (msg.type === "assistant") {
         prev.model = msg.model || prev.model;
+        if (msg.toolCalls?.length) {
+          prev.toolCalls = [...(prev.toolCalls ?? []), ...msg.toolCalls];
+        }
       }
     } else {
       merged.push({ ...msg, content: extractText(msg.content) });
@@ -110,7 +159,7 @@ function mergeMessages(raw: ParsedMessage[]): ParsedMessage[] {
 
   return merged.filter((m) => {
     const text = typeof m.content === "string" ? m.content.trim() : "";
-    return text.length > 0;
+    return text.length > 0 || (m.toolCalls?.length ?? 0) > 0;
   });
 }
 
@@ -132,15 +181,17 @@ function extractText(content: string | Array<Record<string, unknown>>): string {
 export function parseJsonlFile(filePath: string): ParsedMessage[] {
   const content = fs.readFileSync(filePath, "utf-8");
   const lines = content.split("\n").filter((l) => l.trim());
-  const raw: ParsedMessage[] = [];
-
+  const entries: RawJsonlEntry[] = [];
   for (const line of lines) {
     const entry = parseLine(line);
-    if (!entry) continue;
-    const msg = entryToMessage(entry);
+    if (entry) entries.push(entry);
+  }
+  const resultMap = buildToolResultMap(entries);
+  const raw: ParsedMessage[] = [];
+  for (const entry of entries) {
+    const msg = entryToMessage(entry, resultMap);
     if (msg) raw.push(msg);
   }
-
   return mergeMessages(raw);
 }
 
@@ -216,12 +267,20 @@ export function parseNewLines(filePath: string, fromByte: number): { messages: P
 
   const text = buf.toString("utf-8");
   const lines = text.split("\n").filter((l) => l.trim());
-  const messages: ParsedMessage[] = [];
-
+  const entries: RawJsonlEntry[] = [];
   for (const line of lines) {
     const entry = parseLine(line);
-    if (!entry) continue;
-    const msg = entryToMessage(entry);
+    if (entry) entries.push(entry);
+  }
+  // NOTE: results are paired only within this byte range. A tool_use whose
+  // tool_result arrives in a later chunk keeps result=undefined until a full
+  // reload (parseJsonlFile) re-pairs them. Fine while results are unrendered;
+  // Task 9 (rendering results) must account for this — a full reload on tab
+  // switch backfills the missing results.
+  const resultMap = buildToolResultMap(entries);
+  const messages: ParsedMessage[] = [];
+  for (const entry of entries) {
+    const msg = entryToMessage(entry, resultMap);
     if (msg) messages.push(msg);
   }
 
