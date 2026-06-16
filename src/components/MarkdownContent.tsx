@@ -1,7 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface Props {
   content: string;
@@ -19,7 +19,7 @@ export default function MarkdownContent({ content }: Props) {
           if (match) {
             return (
               <SyntaxHighlighter
-                style={oneDark}
+                style={oneLight}
                 language={match[1]}
                 PreTag="div"
                 customStyle={{
@@ -33,9 +33,27 @@ export default function MarkdownContent({ content }: Props) {
             );
           }
 
+          // Block code without language specifier (multiline content)
+          if (code.includes("\n")) {
+            return (
+              <div className="bg-gray-100 rounded-md p-4 my-2 overflow-x-auto">
+                <code
+                  className="text-sm"
+                  style={{
+                    whiteSpace: "pre",
+                    display: "block",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {code}
+                </code>
+              </div>
+            );
+          }
+
           return (
             <code
-              className="bg-gray-700 px-1.5 py-0.5 rounded text-sm"
+              className="bg-gray-200 px-1.5 py-0.5 rounded text-sm"
               {...props}
             >
               {children}
@@ -48,7 +66,7 @@ export default function MarkdownContent({ content }: Props) {
         table({ children }) {
           return (
             <div className="overflow-x-auto my-2">
-              <table className="border-collapse border border-gray-600 w-full">
+              <table className="border-collapse border border-gray-300 w-full">
                 {children}
               </table>
             </div>
@@ -56,14 +74,14 @@ export default function MarkdownContent({ content }: Props) {
         },
         th({ children }) {
           return (
-            <th className="border border-gray-600 px-3 py-1.5 bg-gray-700 text-left">
+            <th className="border border-gray-300 px-3 py-1.5 bg-gray-100 text-left">
               {children}
             </th>
           );
         },
         td({ children }) {
           return (
-            <td className="border border-gray-600 px-3 py-1.5">{children}</td>
+            <td className="border border-gray-300 px-3 py-1.5">{children}</td>
           );
         },
         a({ href, children }) {
@@ -72,7 +90,7 @@ export default function MarkdownContent({ content }: Props) {
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-400 hover:underline"
+              className="text-blue-600 hover:underline"
             >
               {children}
             </a>

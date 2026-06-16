@@ -14,6 +14,7 @@ export interface RawJsonlEntry {
     model?: string;
   };
   isSidechain?: boolean;
+  isMeta?: boolean;
 }
 
 export interface ParsedMessage {
@@ -56,6 +57,13 @@ export function entryToMessage(entry: RawJsonlEntry): ParsedMessage | null {
   if (!entry.uuid || !entry.type || !entry.message) return null;
   if (entry.type !== "user" && entry.type !== "assistant") return null;
   if (entry.isSidechain) return null;
+  if (entry.isMeta) return null;
+
+  if (entry.type === "user" && Array.isArray(entry.message.content)) {
+    const blocks = entry.message.content as Array<Record<string, unknown>>;
+    const hasText = blocks.some((b) => b.type === "text" && typeof b.text === "string");
+    if (!hasText) return null;
+  }
 
   const msg: ParsedMessage = {
     uuid: entry.uuid,
@@ -81,19 +89,95 @@ export function entryToMessage(entry: RawJsonlEntry): ParsedMessage | null {
   return msg;
 }
 
+function mergeMessages(raw: ParsedMessage[]): ParsedMessage[] {
+  const merged: ParsedMessage[] = [];
+
+  for (const msg of raw) {
+    const prev = merged[merged.length - 1];
+    if (prev && prev.type === msg.type) {
+      const prevText = extractText(prev.content);
+      const curText = extractText(msg.content);
+      const combined = [prevText, curText].filter(Boolean).join("\n\n");
+      prev.content = combined;
+      prev.timestamp = msg.timestamp || prev.timestamp;
+      if (msg.type === "assistant") {
+        prev.model = msg.model || prev.model;
+      }
+    } else {
+      merged.push({ ...msg, content: extractText(msg.content) });
+    }
+  }
+
+  return merged.filter((m) => {
+    const text = typeof m.content === "string" ? m.content.trim() : "";
+    return text.length > 0;
+  });
+}
+
+function extractText(content: string | Array<Record<string, unknown>>): string {
+  let raw: string;
+  if (typeof content === "string") {
+    raw = content;
+  } else if (Array.isArray(content)) {
+    raw = content
+      .filter((b) => b.type === "text" && typeof b.text === "string")
+      .map((b) => b.text as string)
+      .join("\n\n");
+  } else {
+    return "";
+  }
+  return stripSystemTags(raw);
+}
+
 export function parseJsonlFile(filePath: string): ParsedMessage[] {
   const content = fs.readFileSync(filePath, "utf-8");
   const lines = content.split("\n").filter((l) => l.trim());
-  const messages: ParsedMessage[] = [];
+  const raw: ParsedMessage[] = [];
 
   for (const line of lines) {
     const entry = parseLine(line);
     if (!entry) continue;
     const msg = entryToMessage(entry);
-    if (msg) messages.push(msg);
+    if (msg) raw.push(msg);
   }
 
-  return messages;
+  return mergeMessages(raw);
+}
+
+export function getSessionTitle(filePath: string): string {
+  const content = fs.readFileSync(filePath, "utf-8");
+  const lines = content.split("\n").filter((l) => l.trim());
+
+  let customTitle = "";
+  let aiTitle = "";
+
+  for (const line of lines) {
+    const entry = parseLine(line);
+    if (!entry) continue;
+
+    if (entry.type === "custom-title" && (entry as any).customTitle) {
+      customTitle = (entry as any).customTitle;
+    }
+    if (entry.type === "ai-title" && (entry as any).aiTitle) {
+      aiTitle = (entry as any).aiTitle;
+    }
+  }
+
+  if (customTitle) return customTitle;
+  if (aiTitle) return aiTitle;
+  return getFirstUserMessage(filePath);
+}
+
+function stripSystemTags(text: string): string {
+  return text
+    .replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, "")
+    .replace(/<local-command-caveat>[\s\S]*?<\/local-command-caveat>/g, "")
+    .replace(/<local-command-stdout>[\s\S]*?<\/local-command-stdout>/g, "")
+    .replace(/<command-name>[\s\S]*?<\/command-name>/g, "")
+    .replace(/<command-message>[\s\S]*?<\/command-message>/g, "")
+    .replace(/<command-args>[\s\S]*?<\/command-args>/g, "")
+    .replace(/<bridge_context>[\s\S]*?<\/bridge_context>/g, "")
+    .trim();
 }
 
 export function getFirstUserMessage(filePath: string): string {
@@ -105,16 +189,17 @@ export function getFirstUserMessage(filePath: string): string {
     if (!entry || entry.type !== "user" || !entry.message) continue;
 
     const c = entry.message.content;
+    let raw = "";
     if (typeof c === "string") {
-      return c.slice(0, 80);
-    }
-    if (Array.isArray(c)) {
+      raw = c;
+    } else if (Array.isArray(c)) {
       const textBlock = c.find((b) => (b as Record<string, unknown>).type === "text");
       if (textBlock) {
-        return ((textBlock as Record<string, unknown>).text as string || "").slice(0, 80);
+        raw = ((textBlock as Record<string, unknown>).text as string || "");
       }
     }
-    return "(no text)";
+    const cleaned = stripSystemTags(raw);
+    if (cleaned) return cleaned.slice(0, 80);
   }
 
   return "(empty session)";

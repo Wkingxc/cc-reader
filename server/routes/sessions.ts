@@ -1,9 +1,55 @@
 import { Router } from "express";
 import * as fs from "fs";
 import * as path from "path";
-import { getProjectsDir, parseJsonlFile, getFirstUserMessage } from "../parser.js";
+import { getProjectsDir, parseJsonlFile, getSessionTitle, parseProjectName } from "../parser.js";
 
 const router = Router();
+
+router.get("/recent", (_req, res) => {
+  const projectsDir = getProjectsDir();
+  if (!fs.existsSync(projectsDir)) {
+    res.json([]);
+    return;
+  }
+
+  const allSessions: Array<{
+    id: string;
+    firstMessage: string;
+    timestamp: string;
+    messageCount: number;
+    project: string;
+  }> = [];
+
+  const entries = fs.readdirSync(projectsDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const projectDir = path.join(projectsDir, entry.name);
+    const files = fs.readdirSync(projectDir).filter((f) => f.endsWith(".jsonl"));
+
+    for (const f of files) {
+      const filePath = path.join(projectDir, f);
+      try {
+        const stat = fs.statSync(filePath);
+        const id = f.replace(".jsonl", "");
+        const firstMessage = getSessionTitle(filePath);
+        const content = fs.readFileSync(filePath, "utf-8");
+        const messageCount = content.split("\n").filter((l) => l.trim()).length;
+        allSessions.push({
+          id,
+          firstMessage,
+          timestamp: stat.mtime.toISOString(),
+          messageCount,
+          project: entry.name,
+        });
+      } catch {
+        // skip unreadable files
+      }
+    }
+  }
+
+  allSessions.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  res.json(allSessions.slice(0, 5));
+});
 
 router.get("/:project", (req, res) => {
   const projectDir = path.join(getProjectsDir(), req.params.project);
@@ -23,7 +69,7 @@ router.get("/:project", (req, res) => {
     let firstMessage = "(empty)";
     let messageCount = 0;
     try {
-      firstMessage = getFirstUserMessage(filePath);
+      firstMessage = getSessionTitle(filePath);
       const content = fs.readFileSync(filePath, "utf-8");
       messageCount = content.split("\n").filter((l) => l.trim()).length;
     } catch {

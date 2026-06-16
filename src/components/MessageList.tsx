@@ -34,7 +34,7 @@ export default function MessageList({ messages, userQuestionIndices }: Props) {
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500">
+      <div className="flex-1 flex items-center justify-center text-gray-400">
         Select a session to view messages
       </div>
     );
@@ -42,6 +42,7 @@ export default function MessageList({ messages, userQuestionIndices }: Props) {
 
   return (
     <div ref={containerRef} className="flex-1 overflow-y-auto p-4">
+      <div className="max-w-4xl mx-auto">
       {messages.map((msg) => {
         if (msg.type === "user") {
           return (
@@ -55,6 +56,7 @@ export default function MessageList({ messages, userQuestionIndices }: Props) {
         return <AssistantMessage key={msg.uuid} message={msg} />;
       })}
       <div ref={bottomRef} />
+      </div>
     </div>
   );
 }

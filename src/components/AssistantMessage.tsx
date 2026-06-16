@@ -1,7 +1,6 @@
 import type { Message } from "../types/message";
-import { extractTextContent, extractToolCalls } from "../utils/parseContent";
+import { extractTextContent } from "../utils/parseContent";
 import MarkdownContent from "./MarkdownContent";
-import ToolCallBlock from "./ToolCallBlock";
 
 interface Props {
   message: Message;
@@ -9,9 +8,8 @@ interface Props {
 
 export default function AssistantMessage({ message }: Props) {
   const text = extractTextContent(message.content);
-  const toolCalls = extractToolCalls(message.content);
 
-  if (!text.trim() && toolCalls.length === 0) return null;
+  if (!text.trim()) return null;
 
   return (
     <div
@@ -20,26 +18,20 @@ export default function AssistantMessage({ message }: Props) {
       style={{ fontSize: "var(--font-size)" }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-bold text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded">
+        <span className="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded">
           Claude
         </span>
         {message.model && (
-          <span className="text-xs text-gray-600">{message.model}</span>
+          <span className="text-xs text-gray-400">{message.model}</span>
         )}
-        <span className="text-xs text-gray-500 ml-auto">
+        <span className="text-xs text-gray-400 ml-auto">
           {new Date(message.timestamp).toLocaleTimeString()}
         </span>
       </div>
 
-      {toolCalls.map((tc, i) => (
-        <ToolCallBlock key={tc.id || `${tc.name}-${i}`} block={tc} />
-      ))}
-
-      {text.trim() && (
-        <div className="prose prose-invert max-w-none">
-          <MarkdownContent content={text} />
-        </div>
-      )}
+      <div className="prose max-w-none">
+        <MarkdownContent content={text} />
+      </div>
     </div>
   );
 }

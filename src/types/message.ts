@@ -10,6 +10,7 @@ export interface SessionInfo {
   firstMessage: string;
   timestamp: string;
   messageCount: number;
+  project?: string;
 }
 
 export interface Message {
@@ -38,6 +39,13 @@ export interface ToolCall {
   id: string;
   name: string;
   input: Record<string, unknown>;
+}
+
+export interface TabData {
+  id: string;
+  project: string;
+  session: SessionInfo;
+  messages: Message[];
 }
 
 export interface WsMessage {
