@@ -34,7 +34,7 @@ export default function MessageList({ messages, userQuestionIndices }: Props) {
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-400">
+      <div className="flex-1 flex items-center justify-center text-dim">
         Select a session to view messages
       </div>
     );

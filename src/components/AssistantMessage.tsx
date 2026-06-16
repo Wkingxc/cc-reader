@@ -14,17 +14,17 @@ export default function AssistantMessage({ message }: Props) {
   return (
     <div
       id={`msg-${message.uuid}`}
-      className="rounded-lg p-4 my-3 transition-all"
+      className="bg-surface border border-edge rounded-lg p-4 my-3 transition-all"
       style={{ fontSize: "var(--font-size)" }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded">
+        <span className="text-xs font-bold text-accent bg-accent-soft px-2 py-0.5 rounded">
           Claude
         </span>
         {message.model && (
-          <span className="text-xs text-gray-400">{message.model}</span>
+          <span className="text-xs text-dim">{message.model}</span>
         )}
-        <span className="text-xs text-gray-400 ml-auto">
+        <span className="text-xs text-dim ml-auto">
           {new Date(message.timestamp).toLocaleTimeString()}
         </span>
       </div>

@@ -78,3 +78,24 @@ body {
   margin: 0.5em 0;
   line-height: 1.7;
 }
+
+.dark .prose {
+  color: var(--c-ink);
+}
+.dark .prose h1,
+.dark .prose h2,
+.dark .prose h3,
+.dark .prose h4,
+.dark .prose strong {
+  color: #f1f5f9;
+}
+.dark .prose blockquote {
+  color: var(--c-dim);
+  border-left-color: var(--c-edge);
+}
+.dark .prose hr {
+  border-color: var(--c-edge);
+}
+.dark .prose a {
+  color: var(--c-accent);
+}
