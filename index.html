@@ -7,9 +7,16 @@
     <script>
       (function () {
         try {
-          var t = localStorage.getItem("cc-reader-theme");
-          var dark = t ? t === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-          if (dark) document.documentElement.classList.add("dark");
+          var stored = localStorage.getItem("cc-reader-theme");
+          var theme =
+            stored === "light" || stored === "blue" || stored === "dark"
+              ? stored
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          var root = document.documentElement;
+          root.setAttribute("data-theme", theme);
+          if (theme === "dark") root.classList.add("dark");
         } catch (e) {}
       })();
     </script>

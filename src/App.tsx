@@ -18,7 +18,7 @@ export default function App() {
   const [questionNavCollapsed, setQuestionNavCollapsed] = useState(false);
 
   const { fontSize, increase, decrease } = useFontSize();
-  const { isDark, toggle: toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { scrollTo } = useScrollTo();
 
   const activeTabIdRef = useRef(activeTabId);
@@ -155,8 +155,8 @@ export default function App() {
           onIncrease={increase}
           onDecrease={decrease}
           connected={connected}
-          isDark={isDark}
-          onToggleTheme={toggleTheme}
+          theme={theme}
+          onSelectTheme={setTheme}
         />
 
         <MessageList

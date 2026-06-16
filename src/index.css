@@ -4,7 +4,11 @@
 
 :root {
   --font-size: 16px;
+}
 
+/* 浅紫主题（默认）。:root 兜底，data-theme=light 显式选择，两者同值。 */
+:root,
+[data-theme="light"] {
   --c-base: #ffffff;
   --c-side: #fafafb;
   --c-surface: #ffffff;
@@ -17,6 +21,22 @@
   --c-sel-ink: #5b54e6;
 }
 
+/* 浅蓝主题（清爽天蓝 sky，亮色系） */
+[data-theme="blue"] {
+  --c-base: #ffffff;
+  --c-side: #f6fafd;
+  --c-surface: #ffffff;
+  --c-edge: #dcebf5;
+  --c-ink: #1f2937;
+  --c-dim: #8aa0b2;
+  --c-accent: #0ea5e9;
+  --c-accent-soft: #e0f2fe;
+  --c-sel-bg: #e6f4fd;
+  --c-sel-ink: #0284c7;
+}
+
+/* 暗色主题。dark 同时挂 .dark class，沿用既有 .dark 作用域样式。 */
+[data-theme="dark"],
 .dark {
   --c-base: #0f1117;
   --c-side: #13161e;
@@ -107,6 +127,16 @@ body {
 }
 .cc-msg-in {
   animation: cc-msg-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* 主题选择面板弹出 */
+@keyframes cc-pop-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.cc-pop-in {
+  animation: cc-pop-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: top right;
 }
 
 /* 连接指示灯呼吸脉冲（绿色已连接时） */
