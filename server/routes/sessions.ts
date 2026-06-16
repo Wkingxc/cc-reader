@@ -51,6 +51,63 @@ router.get("/recent", (_req, res) => {
   res.json(allSessions.slice(0, 5));
 });
 
+// NOTE: must be registered before "/:project" so Express does not treat
+// "search" as a project name.
+router.get("/search", (req, res) => {
+  const q = String(req.query.q || "").trim().toLowerCase();
+  if (!q) {
+    res.json([]);
+    return;
+  }
+
+  const projectsDir = getProjectsDir();
+  if (!fs.existsSync(projectsDir)) {
+    res.json([]);
+    return;
+  }
+
+  const results: Array<{
+    id: string;
+    firstMessage: string;
+    timestamp: string;
+    messageCount: number;
+    project: string;
+  }> = [];
+
+  const entries = fs.readdirSync(projectsDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const pathMatches = parseProjectName(entry.name).toLowerCase().includes(q);
+
+    const projectDir = path.join(projectsDir, entry.name);
+    const files = fs.readdirSync(projectDir).filter((f) => f.endsWith(".jsonl"));
+
+    for (const f of files) {
+      const filePath = path.join(projectDir, f);
+      try {
+        const title = getSessionTitle(filePath);
+        if (!pathMatches && !title.toLowerCase().includes(q)) continue;
+
+        const stat = fs.statSync(filePath);
+        const content = fs.readFileSync(filePath, "utf-8");
+        const messageCount = content.split("\n").filter((l) => l.trim()).length;
+        results.push({
+          id: f.replace(".jsonl", ""),
+          firstMessage: title,
+          timestamp: stat.mtime.toISOString(),
+          messageCount,
+          project: entry.name,
+        });
+      } catch {
+        // skip unreadable files
+      }
+    }
+  }
+
+  results.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  res.json(results);
+});
+
 router.get("/:project", (req, res) => {
   const projectDir = path.join(getProjectsDir(), req.params.project);
 
