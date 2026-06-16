@@ -62,3 +62,17 @@ export function getUserQuestions(messages: Message[]): Array<{ index: number; te
   }
   return results;
 }
+
+// 把 `$...$` / `$$...$$`（被反引号包裹的纯公式）解包成裸公式，让数学插件接管。
+// 仅当反引号内整体就是一段 $...$ 公式时才解包，避免误伤普通行内代码。
+// 注意：跳过 ``` 围栏代码块，避免破坏其中展示的 shell 代码（如 `cmd $A $B`）。
+export function unwrapInlineMath(text: string): string {
+  // 按 ``` 围栏切分：偶数索引是普通文本，奇数索引是围栏块（含```）。
+  const parts = text.split(/(```[\s\S]*?```)/g);
+  return parts
+    .map((part, i) => {
+      if (i % 2 === 1) return part; // 围栏块原样保留
+      return part.replace(/`(\${1,2}[^`]*?\${1,2})`/g, (_m, formula) => formula);
+    })
+    .join("");
+}
