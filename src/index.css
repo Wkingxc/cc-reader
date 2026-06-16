@@ -127,3 +127,27 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* 侧栏选中态强调竖条 */
+.cc-session-sel {
+  position: relative;
+}
+.cc-session-sel::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  border-radius: 3px;
+  background: var(--c-accent);
+  animation: cc-bar-in 0.32s cubic-bezier(0.34, 1.3, 0.5, 1);
+}
+.dark .cc-session-sel::before {
+  box-shadow: 0 0 10px 1px var(--c-accent);
+}
+@keyframes cc-bar-in {
+  from { opacity: 0; transform: translateY(-50%) scaleY(0.3); }
+  to { opacity: 1; transform: translateY(-50%) scaleY(1); }
+}
