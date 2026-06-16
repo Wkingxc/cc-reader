@@ -16,7 +16,7 @@ export default function TabBar({
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center bg-gray-100 border-b border-gray-200 overflow-x-auto shrink-0">
+    <div className="flex items-center bg-side border-b border-edge overflow-x-auto shrink-0">
       {tabs.map((tab) => {
         const isActive = tab.id === activeTabId;
         const title = tab.session.firstMessage || "(empty session)";
@@ -32,10 +32,10 @@ export default function TabBar({
                 onCloseTab(tab.id);
               }
             }}
-            className={`flex items-center gap-1.5 px-3 h-9 text-xs cursor-pointer select-none border-r border-gray-200 shrink-0 max-w-[200px] transition-colors ${
+            className={`flex items-center gap-1.5 px-3 h-9 text-xs cursor-pointer select-none border-r border-edge shrink-0 max-w-[200px] transition-colors ${
               isActive
-                ? "bg-white text-gray-900 border-b-2 border-b-blue-500 font-medium"
-                : "bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                ? "bg-base text-ink border-b-2 border-b-accent font-medium"
+                : "bg-side text-dim hover:bg-accent-soft hover:text-ink"
             }`}
           >
             <span className="truncate flex-1">{truncated}</span>
@@ -44,7 +44,7 @@ export default function TabBar({
                 e.stopPropagation();
                 onCloseTab(tab.id);
               }}
-              className="w-4 h-4 flex items-center justify-center rounded hover:bg-gray-300/60 text-gray-400 hover:text-gray-700 shrink-0 text-[10px]"
+              className="w-4 h-4 flex items-center justify-center rounded hover:bg-accent-soft text-dim hover:text-ink shrink-0 text-[10px]"
               title="Close tab"
             >
               ✕

@@ -119,10 +119,10 @@ export default function Sidebar({
 
   if (collapsed) {
     return (
-      <div className="w-10 bg-gray-50 border-r border-gray-200 flex flex-col items-center pt-3 shrink-0">
+      <div className="w-10 bg-side border-r border-edge flex flex-col items-center pt-3 shrink-0 transition-colors">
         <button
           onClick={onToggleCollapse}
-          className="p-1.5 rounded hover:bg-gray-200 text-gray-500 transition-colors"
+          className="p-1.5 rounded hover:bg-accent-soft text-dim transition-colors"
           title="Expand sidebar"
         >
           »
@@ -133,22 +133,22 @@ export default function Sidebar({
 
   if (loading) {
     return (
-      <div className="w-72 bg-gray-50 border-r border-gray-200 p-4 text-gray-500 text-sm shrink-0">
+      <div className="w-72 bg-side border-r border-edge p-4 text-dim text-sm shrink-0">
         Loading projects...
       </div>
     );
   }
 
   return (
-    <div className="w-72 bg-gray-50 border-r border-gray-200 flex flex-col shrink-0">
-      <div className="p-3 border-b border-gray-200 flex items-center justify-between">
+    <div className="w-72 bg-side border-r border-edge flex flex-col shrink-0 transition-colors">
+      <div className="p-3 border-b border-edge flex items-center justify-between">
         <div>
-          <h1 className="text-sm font-bold text-gray-800">CC Reader</h1>
-          <p className="text-xs text-gray-500 mt-0.5">{projects.length} projects</p>
+          <h1 className="text-sm font-bold text-ink">CC Reader</h1>
+          <p className="text-xs text-dim mt-0.5">{projects.length} projects</p>
         </div>
         <button
           onClick={onToggleCollapse}
-          className="p-1.5 rounded hover:bg-gray-200 text-gray-500 transition-colors text-sm"
+          className="p-1.5 rounded hover:bg-accent-soft text-dim transition-colors text-sm"
           title="Collapse sidebar"
         >
           «
@@ -160,14 +160,14 @@ export default function Sidebar({
           <div className="mb-2">
             <button
               onClick={() => setRecentExpanded((v) => !v)}
-              className="w-full text-left px-2 py-1.5 rounded-md text-sm text-gray-600 hover:bg-gray-200/60 flex items-center gap-1.5 transition-colors"
+              className="w-full text-left px-2 py-1.5 rounded-md text-sm text-ink hover:bg-accent-soft flex items-center gap-1.5 transition-colors"
             >
-              <span className="text-[10px] text-gray-400 w-3 shrink-0">
+              <span className="text-[10px] text-dim w-3 shrink-0">
                 {recentExpanded ? "▼" : "▶"}
               </span>
-              <span className="text-xs text-gray-400 shrink-0">🕐</span>
+              <span className="text-xs text-dim shrink-0">🕐</span>
               <span className="truncate flex-1 font-medium text-xs">Recent</span>
-              <span className="text-[10px] text-gray-400 shrink-0">
+              <span className="text-[10px] text-dim shrink-0">
                 {recentSessions.length}
               </span>
             </button>
@@ -184,7 +184,7 @@ export default function Sidebar({
                 ))}
               </div>
             )}
-            <div className="border-b border-gray-200 mt-2" />
+            <div className="border-b border-edge mt-2" />
           </div>
         )}
 
@@ -256,20 +256,20 @@ function TreeNodeItem({
     <div>
       <button
         onClick={handleClick}
-        className="w-full text-left px-2 py-1.5 rounded-md text-sm text-gray-600 hover:bg-gray-200/60 flex items-center gap-1.5 transition-colors"
+        className="w-full text-left px-2 py-1.5 rounded-md text-sm text-ink hover:bg-accent-soft flex items-center gap-1.5 transition-colors"
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
       >
-        <span className="text-[10px] text-gray-400 w-3 shrink-0">
+        <span className="text-[10px] text-dim w-3 shrink-0">
           {hasChildren || hasProject ? (isExpanded ? "▼" : "▶") : ""}
         </span>
         {isDir ? (
-          <span className="text-xs text-gray-400 shrink-0">📁</span>
+          <span className="text-xs text-dim shrink-0">📁</span>
         ) : (
-          <span className="text-xs text-gray-400 shrink-0">📂</span>
+          <span className="text-xs text-dim shrink-0">📂</span>
         )}
         <span className="truncate flex-1 font-medium text-xs">{node.segment}</span>
         {hasProject && (
-          <span className="text-[10px] text-gray-400 shrink-0">
+          <span className="text-[10px] text-dim shrink-0">
             {node.project!.sessionCount}
           </span>
         )}
