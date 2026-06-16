@@ -46,14 +46,19 @@ export default function MessageList({ messages, userQuestionIndices }: Props) {
       {messages.map((msg) => {
         if (msg.type === "user") {
           return (
-            <UserMessage
-              key={msg.uuid}
-              message={msg}
-              questionIndex={userQuestionIndices.get(msg.uuid)}
-            />
+            <div key={msg.uuid} className="cc-msg-in">
+              <UserMessage
+                message={msg}
+                questionIndex={userQuestionIndices.get(msg.uuid)}
+              />
+            </div>
           );
         }
-        return <AssistantMessage key={msg.uuid} message={msg} />;
+        return (
+          <div key={msg.uuid} className="cc-msg-in">
+            <AssistantMessage message={msg} />
+          </div>
+        );
       })}
       <div ref={bottomRef} />
       </div>

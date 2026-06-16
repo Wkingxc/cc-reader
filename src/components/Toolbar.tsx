@@ -57,7 +57,7 @@ export default function Toolbar({
       </button>
 
       <div
-        className={`w-2 h-2 rounded-full ${connected ? "bg-green-400" : "bg-red-400"}`}
+        className={`w-2 h-2 rounded-full ${connected ? "bg-green-400 cc-pulse" : "bg-red-400"}`}
         title={connected ? "Connected" : "Disconnected"}
       />
     </div>
