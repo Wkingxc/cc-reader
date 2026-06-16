@@ -4,6 +4,34 @@
 
 :root {
   --font-size: 16px;
+
+  --c-base: #ffffff;
+  --c-side: #fafafb;
+  --c-surface: #ffffff;
+  --c-edge: #ececf0;
+  --c-ink: #1f2937;
+  --c-dim: #9aa1ad;
+  --c-accent: #6366f1;
+  --c-accent-soft: #eef0ff;
+  --c-sel-bg: #f0f2ff;
+  --c-sel-ink: #5b54e6;
+}
+
+.dark {
+  --c-base: #0f1117;
+  --c-side: #13161e;
+  --c-surface: rgba(255, 255, 255, 0.045);
+  --c-edge: rgba(255, 255, 255, 0.09);
+  --c-ink: #e2e8f0;
+  --c-dim: #6b7689;
+  --c-accent: #22d3ee;
+  --c-accent-soft: rgba(34, 211, 238, 0.12);
+  --c-sel-bg: rgba(34, 211, 238, 0.13);
+  --c-sel-ink: #5eead4;
+}
+
+html, body {
+  background: var(--c-base);
 }
 
 body {
