@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import type { CliId, CliOption, Project, SessionInfo } from "../types/message";
+import type { FavoriteEntry } from "../hooks/useFavorites";
 import SessionItem from "./SessionItem";
 
 interface TreeNode {
@@ -69,6 +70,9 @@ interface Props {
   openSessionIds: Set<string>;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  favorites: FavoriteEntry[];
+  isFavorite: (id: string) => boolean;
+  onToggleFavorite: (project: string, session: SessionInfo) => void;
 }
 
 const CLI_LABELS: Record<CliId, string> = {
@@ -84,6 +88,9 @@ export default function Sidebar({
   openSessionIds,
   collapsed,
   onToggleCollapse,
+  favorites,
+  isFavorite,
+  onToggleFavorite,
 }: Props) {
   const [availableClis, setAvailableClis] = useState<CliOption[]>([]);
   const [cliMenuOpen, setCliMenuOpen] = useState(false);
@@ -92,6 +99,7 @@ export default function Sidebar({
   const [sessions, setSessions] = useState<Record<string, SessionInfo[]>>({});
   const [recentSessions, setRecentSessions] = useState<SessionInfo[]>([]);
   const [recentExpanded, setRecentExpanded] = useState(true);
+  const [favoritesExpanded, setFavoritesExpanded] = useState(true);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
@@ -320,6 +328,49 @@ export default function Sidebar({
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+        {!isSearching && favorites.length > 0 && (
+          <div className="mb-2">
+            <button
+              onClick={() => setFavoritesExpanded((v) => !v)}
+              className="w-full text-left px-2 py-1.5 rounded-md text-sm text-ink hover:bg-accent-soft flex items-center gap-1.5 transition-colors"
+            >
+              <span className="text-[10px] text-dim w-3 shrink-0">
+                {favoritesExpanded ? "▼" : "▶"}
+              </span>
+              <span className="text-xs text-yellow-500 shrink-0">★</span>
+              <span className="truncate flex-1 font-medium text-xs">Favorites</span>
+              <span className="text-[10px] text-dim shrink-0">
+                {favorites.length}
+              </span>
+            </button>
+            {favoritesExpanded && (
+              <div className="space-y-0.5 pl-5">
+                {favorites.map((fav) => {
+                  const session: SessionInfo = {
+                    id: fav.id,
+                    firstMessage: fav.firstMessage,
+                    timestamp: fav.timestamp,
+                    messageCount: fav.messageCount,
+                    project: fav.project,
+                  };
+                  return (
+                    <SessionItem
+                      key={`fav-${fav.id}`}
+                      session={session}
+                      isActive={activeSessionId === fav.id}
+                      isOpen={openSessionIds.has(fav.id)}
+                      isFavorite={true}
+                      onClick={() => onSelectSession(fav.project, session)}
+                      onToggleFavorite={() => onToggleFavorite(fav.project, session)}
+                    />
+                  );
+                })}
+              </div>
+            )}
+            <div className="border-b border-edge mt-2" />
+          </div>
+        )}
+
         {!isSearching && recentSessions.length > 0 && (
           <div className="mb-2">
             <button
@@ -343,7 +394,9 @@ export default function Sidebar({
                     session={session}
                     isActive={activeSessionId === session.id}
                     isOpen={openSessionIds.has(session.id)}
+                    isFavorite={isFavorite(session.id)}
                     onClick={() => onSelectSession(session.project!, session)}
+                    onToggleFavorite={() => onToggleFavorite(session.project!, session)}
                   />
                 ))}
               </div>
@@ -366,6 +419,8 @@ export default function Sidebar({
             matchedProjectNames={matchedProjectNames}
             activeSessionId={activeSessionId}
             openSessionIds={openSessionIds}
+            isFavorite={isFavorite}
+            onToggleFavorite={onToggleFavorite}
             onToggleDir={toggleDir}
             onToggleProject={toggleProject}
             onSelectSession={onSelectSession}
@@ -395,6 +450,8 @@ interface TreeNodeItemProps {
   matchedProjectNames: Set<string>;
   activeSessionId: string | null;
   openSessionIds: Set<string>;
+  isFavorite: (id: string) => boolean;
+  onToggleFavorite: (project: string, session: SessionInfo) => void;
   onToggleDir: (path: string) => void;
   onToggleProject: (dirName: string) => void;
   onSelectSession: (project: string, session: SessionInfo) => void;
@@ -413,6 +470,8 @@ function TreeNodeItem({
   matchedProjectNames,
   activeSessionId,
   openSessionIds,
+  isFavorite,
+  onToggleFavorite,
   onToggleDir,
   onToggleProject,
   onSelectSession,
@@ -489,7 +548,9 @@ function TreeNodeItem({
                     session={session}
                     isActive={activeSessionId === session.id}
                     isOpen={openSessionIds.has(session.id)}
+                    isFavorite={isFavorite(session.id)}
                     onClick={() => onSelectSession(dir, session)}
+                    onToggleFavorite={() => onToggleFavorite(dir, session)}
                   />
                 ))}
                 {hasMore && (
@@ -519,6 +580,8 @@ function TreeNodeItem({
                 matchedProjectNames={matchedProjectNames}
                 activeSessionId={activeSessionId}
                 openSessionIds={openSessionIds}
+                isFavorite={isFavorite}
+                onToggleFavorite={onToggleFavorite}
                 onToggleDir={onToggleDir}
                 onToggleProject={onToggleProject}
                 onSelectSession={onSelectSession}

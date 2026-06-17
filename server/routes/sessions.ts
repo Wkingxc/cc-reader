@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { ParsedMessage } from "../parser.js";
 import { getSource } from "../sources/index.js";
 
 const router = Router();
@@ -22,13 +23,27 @@ router.get("/:project", (req, res) => {
   const source = getSource(req.query.cli as string | undefined);
   const list = source.listSessions(req.params.project);
   if (list.length === 0) {
-    // For trae, an empty list may be valid (e.g. cwd never used). For claude
-    // we previously 404'd on missing dir; tolerate both for simplicity.
     res.json([]);
     return;
   }
   res.json(list);
 });
+
+function isUserText(msg: ParsedMessage): boolean {
+  if (msg.type !== "user") return false;
+  const text = typeof msg.content === "string" ? msg.content.trim() : "";
+  return text.length > 0;
+}
+
+// Returns 1-based round indices: round k starts at the k-th user-text message
+// and includes everything up to (but not including) the next user-text message.
+function findRoundStarts(messages: ParsedMessage[]): number[] {
+  const starts: number[] = [];
+  messages.forEach((m, i) => {
+    if (isUserText(m)) starts.push(i);
+  });
+  return starts;
+}
 
 router.get("/:project/:sessionId", (req, res) => {
   const source = getSource(req.query.cli as string | undefined);
@@ -37,7 +52,65 @@ router.get("/:project/:sessionId", (req, res) => {
     res.status(404).json({ error: "Session not found" });
     return;
   }
-  res.json(messages);
+
+  const recentRoundsRaw = req.query.recentRounds;
+  const beforeRoundRaw = req.query.beforeRound;
+  const roundsRaw = req.query.rounds;
+
+  // Backwards-compatible: when no pagination query is supplied, return the
+  // full message array (the original shape).
+  if (recentRoundsRaw == null && beforeRoundRaw == null) {
+    res.json(messages);
+    return;
+  }
+
+  const starts = findRoundStarts(messages);
+  const totalRounds = starts.length;
+
+  if (totalRounds === 0) {
+    res.json({
+      messages,
+      totalRounds: 0,
+      oldestLoadedRound: 0,
+      hasMore: false,
+    });
+    return;
+  }
+
+  let fromRound: number; // 1-based, inclusive
+  let toRound: number; // 1-based, inclusive
+
+  if (beforeRoundRaw != null) {
+    const before = Math.max(1, parseInt(String(beforeRoundRaw), 10) || 1);
+    const count = Math.max(1, parseInt(String(roundsRaw ?? "10"), 10) || 10);
+    toRound = before - 1;
+    fromRound = Math.max(1, toRound - count + 1);
+    if (toRound < 1) {
+      res.json({
+        messages: [],
+        totalRounds,
+        oldestLoadedRound: before,
+        hasMore: false,
+      });
+      return;
+    }
+  } else {
+    const recent = Math.max(1, parseInt(String(recentRoundsRaw), 10) || 10);
+    fromRound = Math.max(1, totalRounds - recent + 1);
+    toRound = totalRounds;
+  }
+
+  const startIdx = starts[fromRound - 1];
+  const endIdx =
+    toRound >= totalRounds ? messages.length : starts[toRound];
+  const slice = messages.slice(startIdx, endIdx);
+
+  res.json({
+    messages: slice,
+    totalRounds,
+    oldestLoadedRound: fromRound,
+    hasMore: fromRound > 1,
+  });
 });
 
 export default router;

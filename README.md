@@ -1,6 +1,6 @@
 # CC Reader
 
-Claude Code 对话历史本地查看器。把 `~/.claude/projects/` 里枯燥的 JSONL 日志，变成浏览器里可以舒适阅读的对话界面。
+CLI 对话历史本地查看器。支持 **Claude Code**（`~/.claude/projects/`）和 **TRAE CLI**（`~/.trae/cli/sessions/`）—— 把枯燥的 JSONL 日志变成浏览器里可以舒适阅读的对话界面。
 
 > 纯本地运行，不上传任何数据，不需要联网，不需要 API Key。
 
@@ -10,11 +10,15 @@ Claude Code 对话历史本地查看器。把 `~/.claude/projects/` 里枯燥的
 
 | 功能 | 说明 |
 |------|------|
+| **多 CLI 切换** | 左上角下拉切换 Claude Code / TRAE CLI，状态独立 |
 | **Markdown 渲染** | 代码块语法高亮、表格、链接、引用块完整支持 |
 | **LaTeX 公式** | 通过 KaTeX 渲染行内与块级数学公式 |
+| **图片显示** | Claude 会话里粘贴的图片自动渲染（按需流式加载，可点开原图） |
 | **工具调用展示** | 可折叠查看 Read / Bash / Edit / Write 等工具的输入参数与输出结果 |
 | **三主题切换** | 浅紫 / 浅蓝 / 暗色，顶栏弹出式选择器一键切换，平滑过渡，刷新后保持选择 |
+| **收藏夹** | 侧栏 Favorites 分组，星标快速收藏对话，按 CLI 隔离持久化 |
 | **会话搜索** | 侧栏按路径或对话标题实时搜索，自动过滤并展开匹配项 |
+| **轮分页** | 长会话首屏只加载最近 10 轮，右侧"加载更早 10 轮"按需向上扩展，避免卡顿 |
 | **实时更新** | 正在进行的对话会自动追加新消息（基于文件监听 + WebSocket） |
 | **多标签页** | 同时打开多个会话，像浏览器一样切换 |
 | **问题快速跳转** | 右侧浮动面板，一键跳到任意一轮提问 |
@@ -35,7 +39,7 @@ Claude Code 对话历史本地查看器。把 `~/.claude/projects/` 里枯燥的
 ### 环境要求
 
 - **Node.js** 18 或更高（`node -v` 查看）
-- **Claude Code** —— 对话历史存储在 `~/.claude/projects/`
+- **Claude Code** 或 **TRAE CLI**（至少一个）—— 对话历史分别存储在 `~/.claude/projects/` 与 `~/.trae/cli/sessions/`
 - 支持 macOS / Linux / Windows
 
 ### 安装

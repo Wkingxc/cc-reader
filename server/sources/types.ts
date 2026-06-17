@@ -25,4 +25,9 @@ export interface CliSource {
   parseSession(projectDirName: string, sessionId: string): ParsedMessage[] | null;
   resolveSessionFile(projectDirName: string, sessionId: string): string | null;
   parseNewBytes(filePath: string, fromByte: number): { messages: ParsedMessage[]; newOffset: number };
+  getImage?(
+    projectDirName: string,
+    sessionId: string,
+    imageId: string
+  ): { mediaType: string; buffer: Buffer } | null;
 }

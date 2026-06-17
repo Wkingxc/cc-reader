@@ -1,9 +1,16 @@
 import { useState, useCallback, useMemo, useRef } from "react";
-import type { CliId, Message, SessionInfo, TabData } from "./types/message";
+import type {
+  CliId,
+  Message,
+  SessionInfo,
+  SessionPage,
+  TabData,
+} from "./types/message";
 import { getUserQuestions, extractTextContent } from "./utils/parseContent";
 import { useFontSize } from "./hooks/useFontSize";
 import { useTheme } from "./hooks/useTheme";
 import { useCli } from "./hooks/useCli";
+import { useFavorites } from "./hooks/useFavorites";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { useScrollTo } from "./hooks/useScrollTo";
 import Sidebar from "./components/Sidebar";
@@ -11,6 +18,8 @@ import Toolbar from "./components/Toolbar";
 import TabBar from "./components/TabBar";
 import MessageList from "./components/MessageList";
 import QuestionNav from "./components/QuestionNav";
+
+const ROUNDS_PER_PAGE = 10;
 
 export default function App() {
   const [tabs, setTabs] = useState<TabData[]>([]);
@@ -21,6 +30,7 @@ export default function App() {
   const { fontSize, increase, decrease } = useFontSize();
   const { theme, setTheme } = useTheme();
   const { cli, setCli } = useCli();
+  const { favorites, isFavorite, toggle: toggleFavorite } = useFavorites(cli);
   const { scrollTo } = useScrollTo();
 
   const activeTabIdRef = useRef(activeTabId);
@@ -52,16 +62,19 @@ export default function App() {
       }
 
       const res = await fetch(
-        `/api/sessions/${project}/${session.id}?cli=${cli}`
+        `/api/sessions/${project}/${session.id}?cli=${cli}&recentRounds=${ROUNDS_PER_PAGE}`
       );
-      const data: Message[] = await res.json();
+      const data: SessionPage = await res.json();
 
       const newTab: TabData = {
         id: session.id,
         cli,
         project,
         session,
-        messages: data,
+        messages: data.messages,
+        totalRounds: data.totalRounds,
+        oldestLoadedRound: data.oldestLoadedRound,
+        hasMore: data.hasMore,
       };
       setTabs((prev) => [...prev, newTab]);
       setActiveTabId(session.id);
@@ -71,6 +84,40 @@ export default function App() {
     },
     [tabs, watch, unwatch, cli]
   );
+
+  const handleLoadMore = useCallback(async () => {
+    const tab = tabs.find((t) => t.id === activeTabIdRef.current);
+    if (!tab || !tab.hasMore || tab.loadingMore) return;
+
+    setTabs((prev) =>
+      prev.map((t) => (t.id === tab.id ? { ...t, loadingMore: true } : t))
+    );
+
+    try {
+      const res = await fetch(
+        `/api/sessions/${tab.project}/${tab.id}?cli=${tab.cli}&beforeRound=${tab.oldestLoadedRound}&rounds=${ROUNDS_PER_PAGE}`
+      );
+      const data: SessionPage = await res.json();
+      setTabs((prev) =>
+        prev.map((t) =>
+          t.id === tab.id
+            ? {
+                ...t,
+                messages: [...data.messages, ...t.messages],
+                oldestLoadedRound: data.oldestLoadedRound,
+                hasMore: data.hasMore,
+                totalRounds: data.totalRounds,
+                loadingMore: false,
+              }
+            : t
+        )
+      );
+    } catch {
+      setTabs((prev) =>
+        prev.map((t) => (t.id === tab.id ? { ...t, loadingMore: false } : t))
+      );
+    }
+  }, [tabs]);
 
   const handleSelectTab = useCallback(
     (tabId: string) => {
@@ -125,15 +172,16 @@ export default function App() {
     [tabs, activeTabId]
   );
   const activeMessages = activeTab?.messages ?? [];
+  const activeStartIndex = activeTab?.oldestLoadedRound ?? 1;
 
   const questions = useMemo(
-    () => getUserQuestions(activeMessages),
-    [activeMessages]
+    () => getUserQuestions(activeMessages, activeStartIndex),
+    [activeMessages, activeStartIndex]
   );
 
   const userQuestionIndices = useMemo(() => {
     const map = new Map<string, number>();
-    let idx = 0;
+    let idx = activeStartIndex - 1;
     for (const msg of activeMessages) {
       if (msg.type === "user") {
         const text = extractTextContent(msg.content).trim();
@@ -143,7 +191,7 @@ export default function App() {
       }
     }
     return map;
-  }, [activeMessages]);
+  }, [activeMessages, activeStartIndex]);
 
   const openSessionIds = useMemo(
     () => new Set(tabs.map((t) => t.id)),
@@ -162,6 +210,9 @@ export default function App() {
         openSessionIds={openSessionIds}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
+        favorites={favorites}
+        isFavorite={isFavorite}
+        onToggleFavorite={toggleFavorite}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -185,6 +236,9 @@ export default function App() {
         <MessageList
           messages={activeMessages}
           userQuestionIndices={userQuestionIndices}
+          cli={activeTab?.cli ?? cli}
+          project={activeTab?.project ?? ""}
+          sessionId={activeTab?.id ?? ""}
         />
       </div>
 
@@ -193,6 +247,10 @@ export default function App() {
         onJump={scrollTo}
         collapsed={questionNavCollapsed}
         onToggleCollapse={() => setQuestionNavCollapsed((c) => !c)}
+        hasMore={activeTab?.hasMore ?? false}
+        loadingMore={activeTab?.loadingMore ?? false}
+        onLoadMore={handleLoadMore}
+        totalRounds={activeTab?.totalRounds ?? questions.length}
       />
     </div>
   );

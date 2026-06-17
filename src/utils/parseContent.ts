@@ -50,9 +50,12 @@ export function getToolSummary(block: { name?: string; input?: Record<string, un
   }
 }
 
-export function getUserQuestions(messages: Message[]): Array<{ index: number; text: string; uuid: string }> {
+export function getUserQuestions(
+  messages: Message[],
+  startIndex: number = 1
+): Array<{ index: number; text: string; uuid: string }> {
   const results: Array<{ index: number; text: string; uuid: string }> = [];
-  let idx = 0;
+  let idx = startIndex - 1;
   for (const m of messages) {
     if (m.type !== "user") continue;
     const text = extractTextContent(m.content).trim();

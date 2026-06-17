@@ -90,12 +90,23 @@ function entryToMessage(
   if (entry.isSidechain) return null;
   if (entry.isMeta) return null;
 
+  let images: { id: string; mediaType: string }[] | undefined;
   if (entry.type === "user" && Array.isArray(entry.message.content)) {
     const blocks = entry.message.content as Array<Record<string, unknown>>;
     const hasText = blocks.some(
       (b) => b.type === "text" && typeof b.text === "string"
     );
-    if (!hasText) return null;
+    const imageBlocks: { id: string; mediaType: string }[] = [];
+    blocks.forEach((b, idx) => {
+      if (b.type === "image") {
+        const src = (b.source ?? {}) as Record<string, unknown>;
+        const media =
+          typeof src.media_type === "string" ? src.media_type : "image/png";
+        imageBlocks.push({ id: `${entry.uuid}:${idx}`, mediaType: media });
+      }
+    });
+    if (!hasText && imageBlocks.length === 0) return null;
+    if (imageBlocks.length > 0) images = imageBlocks;
   }
 
   const msg: ParsedMessage = {
@@ -105,6 +116,7 @@ function entryToMessage(
     content: entry.message.content || "",
     model: entry.message.model,
   };
+  if (images) msg.images = images;
 
   if (entry.type === "assistant" && Array.isArray(entry.message.content)) {
     const toolCalls = (entry.message.content as Array<Record<string, unknown>>)
@@ -392,6 +404,36 @@ export const claudeSource: CliSource = {
   },
 
   parseNewBytes,
+
+  getImage(projectDirName: string, sessionId: string, imageId: string) {
+    const filePath = this.resolveSessionFile(projectDirName, sessionId);
+    if (!filePath) return null;
+    const sep = imageId.lastIndexOf(":");
+    if (sep < 0) return null;
+    const targetUuid = imageId.slice(0, sep);
+    const blockIdx = parseInt(imageId.slice(sep + 1), 10);
+    if (Number.isNaN(blockIdx)) return null;
+
+    const content = fs.readFileSync(filePath, "utf-8");
+    const lines = content.split("\n").filter((l) => l.trim());
+    for (const line of lines) {
+      const entry = parseLine(line);
+      if (!entry || entry.uuid !== targetUuid) continue;
+      const msg = entry.message;
+      if (!msg || !Array.isArray(msg.content)) return null;
+      const block = (msg.content as Array<Record<string, unknown>>)[blockIdx];
+      if (!block || block.type !== "image") return null;
+      const src = (block.source ?? {}) as Record<string, unknown>;
+      if (typeof src.data !== "string") return null;
+      const media =
+        typeof src.media_type === "string" ? src.media_type : "image/png";
+      return {
+        mediaType: media,
+        buffer: Buffer.from(src.data, "base64"),
+      };
+    }
+    return null;
+  },
 };
 
 // Re-export helpers used by other parts of the server (none for now).

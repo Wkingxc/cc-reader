@@ -1,14 +1,17 @@
 import { useEffect, useRef } from "react";
-import type { Message } from "../types/message";
+import type { CliId, Message } from "../types/message";
 import UserMessage from "./UserMessage";
 import AssistantMessage from "./AssistantMessage";
 
 interface Props {
   messages: Message[];
   userQuestionIndices: Map<string, number>;
+  cli: CliId;
+  project: string;
+  sessionId: string;
 }
 
-export default function MessageList({ messages, userQuestionIndices }: Props) {
+export default function MessageList({ messages, userQuestionIndices, cli, project, sessionId }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const wasAtBottom = useRef(true);
@@ -50,6 +53,9 @@ export default function MessageList({ messages, userQuestionIndices }: Props) {
               <UserMessage
                 message={msg}
                 questionIndex={userQuestionIndices.get(msg.uuid)}
+                cli={cli}
+                project={project}
+                sessionId={sessionId}
               />
             </div>
           );

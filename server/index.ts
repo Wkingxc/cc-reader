@@ -9,6 +9,7 @@ import { exec } from "child_process";
 import { fileURLToPath } from "url";
 import projectsRouter from "./routes/projects.js";
 import sessionsRouter from "./routes/sessions.js";
+import imagesRouter from "./routes/images.js";
 import { handleWatch, stopWatch, handleDisconnect } from "./watcher.js";
 import { getAvailableCliIds } from "./sources/index.js";
 
@@ -26,6 +27,7 @@ app.get("/api/clis", (_req, res) => {
 
 app.use("/api/projects", projectsRouter);
 app.use("/api/sessions", sessionsRouter);
+app.use("/api/image", imagesRouter);
 
 const distPath = path.join(__dirname, "..", "dist");
 if (fs.existsSync(distPath)) {

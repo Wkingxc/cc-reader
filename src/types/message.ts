@@ -20,6 +20,11 @@ export interface SessionInfo {
   project?: string;
 }
 
+export interface ImageRef {
+  id: string;
+  mediaType: string;
+}
+
 export interface Message {
   uuid: string;
   type: "user" | "assistant";
@@ -27,6 +32,7 @@ export interface Message {
   content: MessageContent;
   toolCalls?: ToolCall[];
   model?: string;
+  images?: ImageRef[];
 }
 
 export type MessageContent = string | ContentBlock[];
@@ -56,6 +62,17 @@ export interface TabData {
   project: string;
   session: SessionInfo;
   messages: Message[];
+  totalRounds: number;
+  oldestLoadedRound: number;
+  hasMore: boolean;
+  loadingMore?: boolean;
+}
+
+export interface SessionPage {
+  messages: Message[];
+  totalRounds: number;
+  oldestLoadedRound: number;
+  hasMore: boolean;
 }
 
 export interface WsMessage {

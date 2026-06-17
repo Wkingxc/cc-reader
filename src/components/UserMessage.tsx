@@ -1,15 +1,19 @@
-import type { Message } from "../types/message";
+import type { CliId, Message } from "../types/message";
 import { extractTextContent } from "../utils/parseContent";
 import MarkdownContent from "./MarkdownContent";
 
 interface Props {
   message: Message;
   questionIndex?: number;
+  cli: CliId;
+  project: string;
+  sessionId: string;
 }
 
-export default function UserMessage({ message, questionIndex }: Props) {
+export default function UserMessage({ message, questionIndex, cli, project, sessionId }: Props) {
   const text = extractTextContent(message.content);
-  if (!text.trim()) return null;
+  const images = message.images ?? [];
+  if (!text.trim() && images.length === 0) return null;
 
   return (
     <div
@@ -28,9 +32,35 @@ export default function UserMessage({ message, questionIndex }: Props) {
           {new Date(message.timestamp).toLocaleTimeString()}
         </span>
       </div>
-      <div className="prose max-w-none">
-        <MarkdownContent content={text} />
-      </div>
+      {text.trim() && (
+        <div className="prose max-w-none">
+          <MarkdownContent content={text} />
+        </div>
+      )}
+      {images.length > 0 && (
+        <div className={`flex flex-wrap gap-2 ${text.trim() ? "mt-3" : ""}`}>
+          {images.map((img) => {
+            const url = `/api/image/${encodeURIComponent(project)}/${encodeURIComponent(sessionId)}/${encodeURIComponent(img.id)}?cli=${cli}`;
+            return (
+              <a
+                key={img.id}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block max-w-full rounded overflow-hidden border border-edge hover:border-accent transition-colors"
+                title="点击查看原图"
+              >
+                <img
+                  src={url}
+                  alt="user pasted image"
+                  loading="lazy"
+                  className="max-w-full max-h-96 object-contain bg-base"
+                />
+              </a>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

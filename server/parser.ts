@@ -1,3 +1,8 @@
+export interface ImageRef {
+  id: string;
+  mediaType: string;
+}
+
 export interface ParsedMessage {
   uuid: string;
   type: "user" | "assistant";
@@ -11,6 +16,7 @@ export interface ParsedMessage {
     isError?: boolean;
   }>;
   model?: string;
+  images?: ImageRef[];
 }
 
 export function stripSystemTags(text: string): string {
@@ -54,6 +60,9 @@ export function mergeMessages(raw: ParsedMessage[]): ParsedMessage[] {
       const combined = [prevText, curText].filter(Boolean).join("\n\n");
       prev.content = combined;
       prev.timestamp = msg.timestamp || prev.timestamp;
+      if (msg.images?.length) {
+        prev.images = [...(prev.images ?? []), ...msg.images];
+      }
       if (msg.type === "assistant") {
         prev.model = msg.model || prev.model;
         if (msg.toolCalls?.length) {
@@ -67,6 +76,10 @@ export function mergeMessages(raw: ParsedMessage[]): ParsedMessage[] {
 
   return merged.filter((m) => {
     const text = typeof m.content === "string" ? m.content.trim() : "";
-    return text.length > 0 || (m.toolCalls?.length ?? 0) > 0;
+    return (
+      text.length > 0 ||
+      (m.toolCalls?.length ?? 0) > 0 ||
+      (m.images?.length ?? 0) > 0
+    );
   });
 }

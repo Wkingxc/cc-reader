@@ -11,6 +11,10 @@ interface Props {
   onJump: (uuid: string) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
+  totalRounds: number;
 }
 
 export default function QuestionNav({
@@ -18,6 +22,10 @@ export default function QuestionNav({
   onJump,
   collapsed,
   onToggleCollapse,
+  hasMore,
+  loadingMore,
+  onLoadMore,
+  totalRounds,
 }: Props) {
   const [search, setSearch] = useState("");
 
@@ -25,7 +33,7 @@ export default function QuestionNav({
     setSearch("");
   }, [questions]);
 
-  if (questions.length === 0) return null;
+  if (questions.length === 0 && !hasMore) return null;
 
   if (collapsed) {
     return (
@@ -38,7 +46,7 @@ export default function QuestionNav({
           «
         </button>
         <div className="mt-2 text-xs font-medium text-accent bg-accent-soft px-1.5 py-0.5 rounded">
-          {questions.length}
+          {totalRounds || questions.length}
         </div>
       </div>
     );
@@ -56,7 +64,7 @@ export default function QuestionNav({
     <div className="w-72 flex-shrink-0 bg-side border-l border-edge flex flex-col h-full overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-edge">
         <span className="text-xs font-medium text-dim">
-          Questions ({questions.length})
+          Questions ({totalRounds || questions.length})
         </span>
         <button
           onClick={onToggleCollapse}
@@ -80,6 +88,20 @@ export default function QuestionNav({
       )}
 
       <div className="flex-1 overflow-y-auto">
+        {hasMore && !search && (
+          <button
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="w-full text-left px-3 py-2 text-xs text-dim hover:text-accent hover:bg-accent-soft transition-colors border-b border-edge disabled:opacity-50 disabled:cursor-wait flex items-center gap-1.5"
+            title="加载更早的 10 轮提问"
+          >
+            <span className="text-accent">↑</span>
+            <span className="flex-1">
+              {loadingMore ? "加载中…" : `加载更早的 10 轮（还有 ${questions[0]?.index ? questions[0].index - 1 : 0} 轮）`}
+            </span>
+          </button>
+        )}
+
         {filtered.map((q) => (
           <button
             key={q.uuid}
