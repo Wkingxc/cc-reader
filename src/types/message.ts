@@ -1,3 +1,10 @@
+export type CliId = "claude" | "trae";
+
+export interface CliOption {
+  id: CliId;
+  label: string;
+}
+
 export interface Project {
   name: string;
   dirName: string;
@@ -45,6 +52,7 @@ export interface ToolCall {
 
 export interface TabData {
   id: string;
+  cli: CliId;
   project: string;
   session: SessionInfo;
   messages: Message[];
@@ -52,6 +60,7 @@ export interface TabData {
 
 export interface WsMessage {
   type: "watch" | "unwatch" | "new-messages" | "session-updated";
+  cli?: CliId;
   project?: string;
   session?: string;
   messages?: Message[];

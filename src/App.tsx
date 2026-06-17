@@ -1,8 +1,9 @@
 import { useState, useCallback, useMemo, useRef } from "react";
-import type { Message, SessionInfo, TabData } from "./types/message";
+import type { CliId, Message, SessionInfo, TabData } from "./types/message";
 import { getUserQuestions, extractTextContent } from "./utils/parseContent";
 import { useFontSize } from "./hooks/useFontSize";
 import { useTheme } from "./hooks/useTheme";
+import { useCli } from "./hooks/useCli";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { useScrollTo } from "./hooks/useScrollTo";
 import Sidebar from "./components/Sidebar";
@@ -19,6 +20,7 @@ export default function App() {
 
   const { fontSize, increase, decrease } = useFontSize();
   const { theme, setTheme } = useTheme();
+  const { cli, setCli } = useCli();
   const { scrollTo } = useScrollTo();
 
   const activeTabIdRef = useRef(activeTabId);
@@ -45,21 +47,29 @@ export default function App() {
       if (existing) {
         setActiveTabId(session.id);
         unwatch();
-        watch(project, session.id);
+        watch(existing.cli, existing.project, existing.id);
         return;
       }
 
-      const res = await fetch(`/api/sessions/${project}/${session.id}`);
+      const res = await fetch(
+        `/api/sessions/${project}/${session.id}?cli=${cli}`
+      );
       const data: Message[] = await res.json();
 
-      const newTab: TabData = { id: session.id, project, session, messages: data };
+      const newTab: TabData = {
+        id: session.id,
+        cli,
+        project,
+        session,
+        messages: data,
+      };
       setTabs((prev) => [...prev, newTab]);
       setActiveTabId(session.id);
 
       unwatch();
-      watch(project, session.id);
+      watch(cli, project, session.id);
     },
-    [tabs, watch, unwatch]
+    [tabs, watch, unwatch, cli]
   );
 
   const handleSelectTab = useCallback(
@@ -69,7 +79,7 @@ export default function App() {
 
       setActiveTabId(tabId);
       unwatch();
-      watch(tab.project, tab.id);
+      watch(tab.cli, tab.project, tab.id);
     },
     [tabs, activeTabId, watch, unwatch]
   );
@@ -86,7 +96,7 @@ export default function App() {
             const nextTab = remaining[newIndex];
             setActiveTabId(nextTab.id);
             unwatch();
-            watch(nextTab.project, nextTab.id);
+            watch(nextTab.cli, nextTab.project, nextTab.id);
           } else {
             setActiveTabId(null);
             unwatch();
@@ -97,6 +107,17 @@ export default function App() {
       });
     },
     [activeTabId, watch, unwatch]
+  );
+
+  const handleSelectCli = useCallback(
+    (next: CliId) => {
+      if (next === cli) return;
+      setCli(next);
+      setTabs([]);
+      setActiveTabId(null);
+      unwatch();
+    },
+    [cli, setCli, unwatch]
   );
 
   const activeTab = useMemo(
@@ -134,6 +155,8 @@ export default function App() {
   return (
     <div className="flex h-screen bg-base text-ink transition-colors">
       <Sidebar
+        cli={cli}
+        onSelectCli={handleSelectCli}
         onSelectSession={handleOpenTab}
         activeSessionId={activeTabId}
         openSessionIds={openSessionIds}

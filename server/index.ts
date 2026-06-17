@@ -4,12 +4,13 @@ import { WebSocketServer, WebSocket } from "ws";
 import * as path from "path";
 import * as fs from "fs";
 import * as net from "net";
+import * as os from "os";
 import { exec } from "child_process";
 import { fileURLToPath } from "url";
 import projectsRouter from "./routes/projects.js";
 import sessionsRouter from "./routes/sessions.js";
 import { handleWatch, stopWatch, handleDisconnect } from "./watcher.js";
-import { getClaudeDir } from "./parser.js";
+import { getAvailableCliIds } from "./sources/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -17,6 +18,11 @@ const app = express();
 const PORT = parseInt(process.env.PORT || "3456", 10);
 
 app.use(express.json());
+
+app.get("/api/clis", (_req, res) => {
+  const ids = getAvailableCliIds();
+  res.json(ids.map((id) => ({ id, label: id === "claude" ? "Claude Code" : "TRAE CLI" })));
+});
 
 app.use("/api/projects", projectsRouter);
 app.use("/api/sessions", sessionsRouter);
@@ -37,7 +43,7 @@ wss.on("connection", (ws: WebSocket) => {
     try {
       const msg = JSON.parse(data.toString());
       if (msg.type === "watch" && msg.project && msg.session) {
-        handleWatch(ws, msg.project, msg.session);
+        handleWatch(ws, msg.cli || "claude", msg.project, msg.session);
       } else if (msg.type === "unwatch") {
         stopWatch(ws);
       }
@@ -61,9 +67,12 @@ function findOpenPort(start: number): Promise<number> {
 }
 
 async function main() {
-  const claudeDir = getClaudeDir();
-  if (!fs.existsSync(claudeDir)) {
-    console.error(`Error: ${claudeDir} not found. Is Claude Code installed?`);
+  const claudeExists = fs.existsSync(path.join(os.homedir(), ".claude"));
+  const traeExists = fs.existsSync(path.join(os.homedir(), ".trae", "cli", "sessions"));
+  if (!claudeExists && !traeExists) {
+    console.error(
+      `Error: neither ~/.claude nor ~/.trae/cli/sessions found. Is Claude Code or TRAE CLI installed?`
+    );
     process.exit(1);
   }
 

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from "react";
-import type { Message, WsMessage } from "../types/message";
+import type { CliId, Message, WsMessage } from "../types/message";
 
 export function useWebSocket(onNewMessages: (msgs: Message[]) => void) {
   const wsRef = useRef<WebSocket | null>(null);
@@ -48,9 +48,9 @@ export function useWebSocket(onNewMessages: (msgs: Message[]) => void) {
     };
   }, [connect]);
 
-  const watch = useCallback((project: string, session: string) => {
+  const watch = useCallback((cli: CliId, project: string, session: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "watch", project, session }));
+      wsRef.current.send(JSON.stringify({ type: "watch", cli, project, session }));
     }
   }, []);
 

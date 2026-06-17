@@ -1,23 +1,28 @@
 import chokidar from "chokidar";
 import * as fs from "fs";
-import * as path from "path";
 import { WebSocket } from "ws";
-import { parseNewLines, getProjectsDir } from "./parser.js";
+import { getSource } from "./sources/index.js";
 
 interface WatchState {
   filePath: string;
   offset: number;
   watcher: chokidar.FSWatcher;
+  cli: string;
 }
 
 const clientWatches = new Map<WebSocket, WatchState>();
 
-export function handleWatch(ws: WebSocket, project: string, session: string): void {
+export function handleWatch(
+  ws: WebSocket,
+  cli: string,
+  project: string,
+  session: string
+): void {
   stopWatch(ws);
 
-  const filePath = path.join(getProjectsDir(), project, `${session}.jsonl`);
-
-  if (!fs.existsSync(filePath)) return;
+  const source = getSource(cli);
+  const filePath = source.resolveSessionFile(project, session);
+  if (!filePath || !fs.existsSync(filePath)) return;
 
   const stat = fs.statSync(filePath);
   const offset = stat.size;
@@ -28,11 +33,14 @@ export function handleWatch(ws: WebSocket, project: string, session: string): vo
     awaitWriteFinish: { stabilityThreshold: 200, pollInterval: 50 },
   });
 
-  const state: WatchState = { filePath, offset, watcher };
+  const state: WatchState = { filePath, offset, watcher, cli };
   clientWatches.set(ws, state);
 
   watcher.on("change", () => {
-    const { messages, newOffset } = parseNewLines(state.filePath, state.offset);
+    const { messages, newOffset } = getSource(state.cli).parseNewBytes(
+      state.filePath,
+      state.offset
+    );
     state.offset = newOffset;
 
     if (messages.length > 0 && ws.readyState === WebSocket.OPEN) {

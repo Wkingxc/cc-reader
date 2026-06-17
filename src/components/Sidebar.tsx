@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import type { Project, SessionInfo } from "../types/message";
+import { useState, useEffect, useMemo, useRef } from "react";
+import type { CliId, CliOption, Project, SessionInfo } from "../types/message";
 import SessionItem from "./SessionItem";
 
 interface TreeNode {
@@ -62,6 +62,8 @@ function subtreeHasMatch(node: TreeNode, matched: Set<string>): boolean {
 const PAGE = 5;
 
 interface Props {
+  cli: CliId;
+  onSelectCli: (cli: CliId) => void;
   onSelectSession: (project: string, session: SessionInfo) => void;
   activeSessionId: string | null;
   openSessionIds: Set<string>;
@@ -69,13 +71,23 @@ interface Props {
   onToggleCollapse: () => void;
 }
 
+const CLI_LABELS: Record<CliId, string> = {
+  claude: "Claude Code",
+  trae: "TRAE CLI",
+};
+
 export default function Sidebar({
+  cli,
+  onSelectCli,
   onSelectSession,
   activeSessionId,
   openSessionIds,
   collapsed,
   onToggleCollapse,
 }: Props) {
+  const [availableClis, setAvailableClis] = useState<CliOption[]>([]);
+  const [cliMenuOpen, setCliMenuOpen] = useState(false);
+  const cliMenuRef = useRef<HTMLDivElement>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [sessions, setSessions] = useState<Record<string, SessionInfo[]>>({});
   const [recentSessions, setRecentSessions] = useState<SessionInfo[]>([]);
@@ -90,9 +102,24 @@ export default function Sidebar({
   const isSearching = search.trim().length > 0;
 
   useEffect(() => {
+    fetch("/api/clis")
+      .then((r) => r.json())
+      .then((data: CliOption[]) => setAvailableClis(data))
+      .catch(() => setAvailableClis([]));
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    setProjects([]);
+    setSessions({});
+    setRecentSessions([]);
+    setExpandedDirs(new Set());
+    setExpandedProject(null);
+    setVisibleCounts({});
+    setSearchResults([]);
     Promise.all([
-      fetch("/api/projects").then((r) => r.json()),
-      fetch("/api/sessions/recent").then((r) => r.json()),
+      fetch(`/api/projects?cli=${cli}`).then((r) => r.json()),
+      fetch(`/api/sessions/recent?cli=${cli}`).then((r) => r.json()),
     ])
       .then(([projectsData, recentData]) => {
         setProjects(projectsData);
@@ -100,7 +127,25 @@ export default function Sidebar({
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [cli]);
+
+  useEffect(() => {
+    if (!cliMenuOpen) return;
+    const onPointer = (e: MouseEvent) => {
+      if (cliMenuRef.current && !cliMenuRef.current.contains(e.target as Node)) {
+        setCliMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCliMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [cliMenuOpen]);
 
   const tree = useMemo(() => buildTree(projects), [projects]);
 
@@ -113,13 +158,13 @@ export default function Sidebar({
       return;
     }
     const t = setTimeout(() => {
-      fetch(`/api/sessions/search?q=${encodeURIComponent(q)}`)
+      fetch(`/api/sessions/search?cli=${cli}&q=${encodeURIComponent(q)}`)
         .then((r) => r.json())
         .then((data: SessionInfo[]) => setSearchResults(data))
         .catch(() => setSearchResults([]));
     }, 250);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, cli]);
 
   // Matched sessions grouped by project dirName (separate from the `sessions`
   // cache so search results never clobber the full per-project lists).
@@ -169,7 +214,7 @@ export default function Sidebar({
     setExpandedProject(dirName);
 
     if (!sessions[dirName]) {
-      const res = await fetch(`/api/sessions/${dirName}`);
+      const res = await fetch(`/api/sessions/${dirName}?cli=${cli}`);
       const data = await res.json();
       setSessions((prev) => ({ ...prev, [dirName]: data }));
     }
@@ -199,14 +244,65 @@ export default function Sidebar({
 
   return (
     <div className="w-72 bg-side border-r border-edge flex flex-col shrink-0 transition-colors">
-      <div className="p-3 border-b border-edge flex items-center justify-between">
-        <div>
-          <h1 className="text-sm font-bold text-ink">CC Reader</h1>
+      <div className="p-3 border-b border-edge flex items-center justify-between gap-2">
+        <div ref={cliMenuRef} className="relative min-w-0 flex-1">
+          <button
+            onClick={() => setCliMenuOpen((v) => !v)}
+            className="w-full flex items-center gap-1.5 text-left group"
+            title="切换 CLI"
+            aria-haspopup="menu"
+            aria-expanded={cliMenuOpen}
+          >
+            <h1 className="text-sm font-bold text-ink truncate">
+              {CLI_LABELS[cli]}
+            </h1>
+            <span
+              className={`text-[10px] text-dim transition-transform duration-200 ${cliMenuOpen ? "rotate-180" : ""}`}
+            >
+              ▾
+            </span>
+          </button>
           <p className="text-xs text-dim mt-0.5">{projects.length} projects</p>
+
+          {cliMenuOpen && (
+            <div
+              role="menu"
+              className="cc-pop-in absolute left-0 top-full mt-1.5 w-44 p-1 rounded-lg bg-surface border border-edge shadow-lg shadow-black/10 z-30"
+            >
+              {(availableClis.length > 0
+                ? availableClis
+                : (Object.keys(CLI_LABELS) as CliId[]).map((id) => ({
+                    id,
+                    label: CLI_LABELS[id],
+                  }))
+              ).map((opt) => {
+                const active = opt.id === cli;
+                return (
+                  <button
+                    key={opt.id}
+                    role="menuitemradio"
+                    aria-checked={active}
+                    onClick={() => {
+                      setCliMenuOpen(false);
+                      if (!active) onSelectCli(opt.id);
+                    }}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
+                      active
+                        ? "bg-sel-bg text-sel-ink font-medium"
+                        : "text-ink hover:bg-accent-soft"
+                    }`}
+                  >
+                    <span className="flex-1 text-left">{opt.label}</span>
+                    {active && <span className="text-sel-ink">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
         <button
           onClick={onToggleCollapse}
-          className="p-1.5 rounded hover:bg-accent-soft text-dim transition-colors text-sm"
+          className="p-1.5 rounded hover:bg-accent-soft text-dim transition-colors text-sm shrink-0"
           title="Collapse sidebar"
         >
           «
