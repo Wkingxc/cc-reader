@@ -25,9 +25,9 @@ const THEME_OPTIONS: {
   base: string;
   accent: string;
 }[] = [
-  { id: "light", label: "轻科幻", icon: "◐", base: "#f7f8fc", accent: "#6674ff" },
-  { id: "blue", label: "控制台", icon: "⌁", base: "#08131d", accent: "#66d9ff" },
-  { id: "dark", label: "霓虹", icon: "◈", base: "#070714", accent: "#ff4fd8" },
+  { id: "light", label: "轻科幻", icon: "✦", base: "#f7f8fc", accent: "#6674ff" },
+  { id: "blue", label: "星舰", icon: "✧", base: "#08131d", accent: "#66d9ff" },
+  { id: "dark", label: "霓虹", icon: "✹", base: "#070714", accent: "#ff4fd8" },
 ];
 
 // 阅读区宽度预设。fillFraction 仅用作面板里那个迷你示意条的可视宽度，
@@ -259,11 +259,11 @@ export default function Toolbar({
           aria-expanded={open}
         >
           <span
-            className="w-4 h-4 rounded-full border border-edge shrink-0"
-            style={{
-              background: `linear-gradient(135deg, ${current.base} 0 50%, ${current.accent} 50% 100%)`,
-            }}
-          />
+            className="w-4 h-4 rounded-full border border-edge shrink-0 flex items-center justify-center text-[10px] font-bold bg-base text-accent"
+            aria-hidden
+          >
+            {current.icon}
+          </span>
           <span className="font-medium">{current.label}</span>
           <span
             className={`text-dim transition-transform duration-200 ${open ? "rotate-180" : ""}`}
@@ -295,11 +295,11 @@ export default function Toolbar({
                   }`}
                 >
                   <span
-                    className="w-5 h-5 rounded-full border border-edge shrink-0"
-                    style={{
-                      background: `linear-gradient(135deg, ${opt.base} 0 50%, ${opt.accent} 50% 100%)`,
-                    }}
-                  />
+                    className="w-5 h-5 rounded-full border border-edge shrink-0 flex items-center justify-center text-[11px] font-bold bg-base text-accent"
+                    aria-hidden
+                  >
+                    {opt.icon}
+                  </span>
                   <span className="flex-1 text-left">{opt.label}</span>
                   {active && <span className="text-sel-ink">✓</span>}
                 </button>
