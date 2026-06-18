@@ -324,7 +324,7 @@ export default function Sidebar({
 
   if (collapsed) {
     return (
-      <div className="w-10 bg-side border-r border-edge flex flex-col items-center pt-3 shrink-0 transition-colors">
+      <div className="cc-sidebar w-10 bg-side border-r border-edge flex flex-col items-center pt-3 shrink-0 transition-colors">
         <button
           onClick={onToggleCollapse}
           className="p-1.5 rounded hover:bg-accent-soft text-dim transition-colors"
@@ -338,15 +338,15 @@ export default function Sidebar({
 
   if (loading) {
     return (
-      <div className="w-72 bg-side border-r border-edge p-4 text-dim text-sm shrink-0">
+      <div className="cc-sidebar w-72 bg-side border-r border-edge p-4 text-dim text-sm shrink-0">
         Loading projects...
       </div>
     );
   }
 
   return (
-    <div className="w-72 bg-side border-r border-edge flex flex-col shrink-0 transition-colors">
-      <div className="p-3 border-b border-edge flex items-center justify-between gap-2">
+    <div className="cc-sidebar w-72 bg-side border-r border-edge flex flex-col shrink-0 transition-colors">
+      <div className="cc-sidebar-header p-3 border-b border-edge flex items-center justify-between gap-2">
         <div ref={cliMenuRef} className="relative min-w-0 flex-1">
           <button
             onClick={() => setCliMenuOpen((v) => !v)}
@@ -417,7 +417,7 @@ export default function Sidebar({
           placeholder="搜索路径或对话标题..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full px-2 py-1.5 text-xs bg-base border border-edge rounded text-ink placeholder-dim focus:outline-none focus:ring-1 focus:ring-accent transition-colors"
+          className="cc-search w-full px-2 py-1.5 text-xs bg-base border border-edge rounded-lg text-ink placeholder-dim focus:outline-none focus:ring-1 focus:ring-accent transition-colors"
         />
       </div>
 
@@ -426,7 +426,7 @@ export default function Sidebar({
           <div className="mb-2">
             <button
               onClick={() => setFavoritesExpanded((v) => !v)}
-              className="w-full text-left px-2 py-1.5 rounded-md text-sm text-ink hover:bg-accent-soft flex items-center gap-1.5 transition-colors"
+              className="cc-nav-section w-full text-left px-2 py-1.5 rounded-md text-sm text-ink hover:bg-accent-soft flex items-center gap-1.5 transition-colors"
             >
               <span className="text-[10px] text-dim w-3 shrink-0">
                 {favoritesExpanded ? "▼" : "▶"}
@@ -463,7 +463,7 @@ export default function Sidebar({
           <div className="mb-2">
             <button
               onClick={() => setRecentExpanded((v) => !v)}
-              className="w-full text-left px-2 py-1.5 rounded-md text-sm text-ink hover:bg-accent-soft flex items-center gap-1.5 transition-colors"
+              className="cc-nav-section w-full text-left px-2 py-1.5 rounded-md text-sm text-ink hover:bg-accent-soft flex items-center gap-1.5 transition-colors"
             >
               <span className="text-[10px] text-dim w-3 shrink-0">
                 {recentExpanded ? "▼" : "▶"}
@@ -613,7 +613,7 @@ function TreeNodeItem({
     <div>
       <button
         onClick={handleClick}
-        className="w-full text-left px-2 py-1.5 rounded-md text-sm text-ink hover:bg-accent-soft flex items-center gap-1.5 transition-colors"
+        className="cc-nav-section w-full text-left px-2 py-1.5 rounded-md text-sm text-ink hover:bg-accent-soft flex items-center gap-1.5 transition-colors"
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
       >
         <span className="text-[10px] text-dim w-3 shrink-0">

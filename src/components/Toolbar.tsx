@@ -25,9 +25,9 @@ const THEME_OPTIONS: {
   base: string;
   accent: string;
 }[] = [
-  { id: "light", label: "浅紫", icon: "☀", base: "#ffffff", accent: "#6366f1" },
-  { id: "blue", label: "浅蓝", icon: "☀", base: "#ffffff", accent: "#0ea5e9" },
-  { id: "dark", label: "暗色", icon: "🌙", base: "#0f1117", accent: "#22d3ee" },
+  { id: "light", label: "轻科幻", icon: "◐", base: "#f7f8fc", accent: "#6674ff" },
+  { id: "blue", label: "控制台", icon: "⌁", base: "#08131d", accent: "#66d9ff" },
+  { id: "dark", label: "霓虹", icon: "◈", base: "#070714", accent: "#ff4fd8" },
 ];
 
 // 阅读区宽度预设。fillFraction 仅用作面板里那个迷你示意条的可视宽度，
@@ -103,7 +103,7 @@ export default function Toolbar({
   const currentWidth = WIDTH_OPTIONS.find((w) => w.id === width) ?? WIDTH_OPTIONS[1];
 
   return (
-    <div className="h-12 bg-side border-b border-edge px-4 flex items-center gap-3 shrink-0 transition-colors">
+    <div className="cc-toolbar h-12 bg-side border-b border-edge px-4 flex items-center gap-3 shrink-0 transition-colors">
       <h2 className="text-sm font-medium text-ink truncate flex-1">
         {title || "CC Reader"}
       </h2>
@@ -111,7 +111,7 @@ export default function Toolbar({
       <div className="flex items-center gap-1">
         <button
           onClick={onDecrease}
-          className="px-2 py-1 text-sm bg-accent-soft text-ink rounded transition-all hover:-translate-y-0.5"
+          className="cc-control px-2 py-1 text-sm bg-accent-soft text-ink rounded transition-all hover:-translate-y-0.5"
           title="Decrease font size (Ctrl+-)"
         >
           A−
@@ -119,7 +119,7 @@ export default function Toolbar({
         <span className="text-xs text-dim w-10 text-center">{fontSize}px</span>
         <button
           onClick={onIncrease}
-          className="px-2 py-1 text-sm bg-accent-soft text-ink rounded transition-all hover:-translate-y-0.5"
+          className="cc-control px-2 py-1 text-sm bg-accent-soft text-ink rounded transition-all hover:-translate-y-0.5"
           title="Increase font size (Ctrl+=)"
         >
           A+
@@ -128,7 +128,7 @@ export default function Toolbar({
 
       <button
         onClick={onToggleTools}
-        className={`h-7 px-2.5 flex items-center gap-1.5 rounded-full border border-edge text-xs transition-all hover:-translate-y-0.5 ${
+        className={`cc-control h-7 px-2.5 flex items-center gap-1.5 rounded-full border border-edge text-xs transition-all hover:-translate-y-0.5 ${
           showTools
             ? "bg-accent-soft text-ink"
             : "bg-base text-dim"
@@ -180,7 +180,7 @@ export default function Toolbar({
       <div ref={widthWrapRef} className="relative shrink-0">
         <button
           onClick={() => setWidthOpen((v) => !v)}
-          className="h-7 px-2.5 flex items-center gap-1.5 rounded-full bg-accent-soft border border-edge text-xs text-ink transition-all hover:-translate-y-0.5"
+          className="cc-control h-7 px-2.5 flex items-center gap-1.5 rounded-full bg-accent-soft border border-edge text-xs text-ink transition-all hover:-translate-y-0.5"
           title="阅读宽度"
           aria-label="阅读宽度"
           aria-haspopup="menu"
@@ -213,7 +213,7 @@ export default function Toolbar({
         {widthOpen && (
           <div
             role="menu"
-            className="cc-pop-in absolute right-0 top-full mt-1.5 w-44 p-1 rounded-lg bg-surface border border-edge shadow-lg shadow-black/10 z-20"
+            className="cc-popover cc-pop-in absolute right-0 top-full mt-1.5 w-44 p-1 rounded-lg bg-surface border border-edge shadow-lg shadow-black/10 z-20"
           >
             {WIDTH_OPTIONS.map((opt) => {
               const active = opt.id === width;
@@ -252,7 +252,7 @@ export default function Toolbar({
       <div ref={wrapRef} className="relative shrink-0">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="h-7 pl-1.5 pr-2.5 rounded-full bg-accent-soft border border-edge flex items-center gap-1.5 text-xs text-ink transition-all hover:-translate-y-0.5"
+          className="cc-control h-7 pl-1.5 pr-2.5 rounded-full bg-accent-soft border border-edge flex items-center gap-1.5 text-xs text-ink transition-all hover:-translate-y-0.5"
           title="切换主题"
           aria-label="切换主题"
           aria-haspopup="menu"
@@ -275,7 +275,7 @@ export default function Toolbar({
         {open && (
           <div
             role="menu"
-            className="cc-pop-in absolute right-0 top-full mt-1.5 w-40 p-1 rounded-lg bg-surface border border-edge shadow-lg shadow-black/10 z-20"
+            className="cc-popover cc-pop-in absolute right-0 top-full mt-1.5 w-40 p-1 rounded-lg bg-surface border border-edge shadow-lg shadow-black/10 z-20"
           >
             {THEME_OPTIONS.map((opt) => {
               const active = opt.id === theme;

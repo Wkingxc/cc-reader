@@ -240,7 +240,7 @@ export default function App() {
   const title = activeTab ? activeTab.session.firstMessage : "Select a session";
 
   return (
-    <div className="flex h-screen bg-base text-ink transition-colors">
+    <div className="cc-app-shell flex h-screen bg-base text-ink transition-colors">
       <Sidebar
         cli={cli}
         onSelectCli={handleSelectCli}
@@ -255,7 +255,7 @@ export default function App() {
         onDeleteSession={handleDeleteSession}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="relative z-[1] flex-1 flex flex-col min-w-0">
         <TabBar
           tabs={tabs}
           activeTabId={activeTabId}

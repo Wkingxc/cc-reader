@@ -16,7 +16,7 @@ export default function TabBar({
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center bg-side border-b border-edge overflow-x-auto shrink-0">
+    <div className="cc-tabbar flex items-center bg-side border-b border-edge overflow-x-auto shrink-0">
       {tabs.map((tab) => {
         const isActive = tab.id === activeTabId;
         const title = tab.session.firstMessage || "(empty session)";
@@ -32,9 +32,9 @@ export default function TabBar({
                 onCloseTab(tab.id);
               }
             }}
-            className={`flex items-center gap-1.5 px-3 h-9 text-xs cursor-pointer select-none border-r border-edge shrink-0 max-w-[200px] transition-colors ${
+            className={`cc-tab ${isActive ? "cc-tab-active" : ""} flex items-center gap-1.5 px-3 h-9 text-xs cursor-pointer select-none border-r border-edge shrink-0 max-w-[200px] transition-colors ${
               isActive
-                ? "bg-base text-ink border-b-2 border-b-accent font-medium"
+                ? "bg-base text-ink font-medium"
                 : "bg-side text-dim hover:bg-accent-soft hover:text-ink"
             }`}
           >

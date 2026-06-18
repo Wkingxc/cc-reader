@@ -37,7 +37,7 @@ export default function QuestionNav({
 
   if (collapsed) {
     return (
-      <div className="w-12 flex-shrink-0 bg-side border-l border-edge flex flex-col items-center pt-3">
+      <div className="cc-question-nav w-12 flex-shrink-0 bg-side border-l border-edge flex flex-col items-center pt-3">
         <button
           onClick={onToggleCollapse}
           className="text-dim hover:text-accent hover:bg-accent-soft text-sm p-1.5 rounded transition-colors"
@@ -61,8 +61,8 @@ export default function QuestionNav({
     : questions;
 
   return (
-    <div className="w-72 flex-shrink-0 bg-side border-l border-edge flex flex-col h-full overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-edge">
+    <div className="cc-question-nav w-72 flex-shrink-0 bg-side border-l border-edge flex flex-col h-full overflow-hidden">
+      <div className="cc-question-header flex items-center justify-between px-3 py-2 border-b border-edge">
         <span className="text-xs font-medium text-dim">
           Questions ({totalRounds || questions.length})
         </span>
@@ -82,7 +82,7 @@ export default function QuestionNav({
             placeholder="Search..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-2 py-1 text-xs bg-base border border-edge rounded text-ink placeholder-dim focus:outline-none focus:ring-1 focus:ring-accent"
+            className="cc-search w-full px-2 py-1 text-xs bg-base border border-edge rounded-lg text-ink placeholder-dim focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
       )}
@@ -106,7 +106,7 @@ export default function QuestionNav({
           <button
             key={q.uuid}
             onClick={() => onJump(q.uuid)}
-            className="w-full text-left px-3 py-2.5 text-sm text-ink hover:bg-accent-soft transition-colors border-b border-edge group"
+            className="cc-question-item w-full text-left px-3 py-2.5 text-sm text-ink hover:bg-accent-soft transition-colors border-b border-edge group"
           >
             <span className="text-accent font-mono mr-1.5 text-xs font-medium group-hover:text-accent">
               #{q.index}
