@@ -21,7 +21,7 @@ export default function AssistantMessage({ message, showTools = true }: Props) {
   return (
     <div
       id={`msg-${message.uuid}`}
-      className="bg-surface border border-edge rounded-lg p-4 my-3 transition-all"
+      className="cc-message-card cc-message-assistant bg-surface border border-edge rounded-xl p-4 my-3 transition-all"
       style={{ fontSize: "var(--font-size)" }}
     >
       <div className="flex items-center gap-2 mb-2">

@@ -32,7 +32,13 @@ export default function MarkdownContent({ content }: Props) {
                 style={isDark ? oneDark : oneLight}
                 language={match[1]}
                 PreTag="div"
-                customStyle={{ fontSize: "var(--font-size)", borderRadius: "6px", margin: "8px 0" }}
+                customStyle={{
+                  fontSize: "var(--font-size)",
+                  borderRadius: "10px",
+                  margin: "8px 0",
+                  background: "var(--c-code-bg)",
+                  border: "1px solid var(--c-edge)",
+                }}
               >
                 {code}
               </SyntaxHighlighter>
@@ -40,7 +46,7 @@ export default function MarkdownContent({ content }: Props) {
           }
           if (code.includes("\n")) {
             return (
-              <div className="bg-base border border-edge rounded-md p-4 my-2 overflow-x-auto">
+              <div className="bg-[var(--c-code-bg)] border border-edge rounded-lg p-4 my-2 overflow-x-auto">
                 <code className="text-sm" style={{ whiteSpace: "pre", display: "block", fontFamily: "inherit" }}>
                   {code}
                 </code>

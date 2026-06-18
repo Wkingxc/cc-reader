@@ -357,3 +357,23 @@ body {
   border: 3px solid transparent;
   background-clip: padding-box;
 }
+
+.prose table {
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+
+.prose th {
+  color: var(--c-ink);
+}
+
+.cc-inline-code {
+  border: 1px solid color-mix(in srgb, var(--c-accent) 18%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .cc-inline-code,
+.dark .cc-inline-code,
+[data-theme="blue"] .cc-inline-code {
+  color: var(--c-sel-ink);
+}

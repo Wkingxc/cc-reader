@@ -18,11 +18,11 @@ export default function UserMessage({ message, questionIndex, cli, project, sess
   return (
     <div
       id={`msg-${message.uuid}`}
-      className="border-l-4 border-accent bg-accent-soft rounded-r-lg p-4 my-3 transition-all"
+      className="cc-message-card cc-message-user border-l-4 rounded-r-xl p-4 my-3 transition-all"
       style={{ fontSize: "var(--font-size)" }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-bold text-white bg-accent px-2 py-0.5 rounded">
+        <span className="text-xs font-bold text-white bg-accent px-2 py-0.5 rounded shadow-sm">
           You
         </span>
         {questionIndex !== undefined && (
