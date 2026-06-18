@@ -61,6 +61,7 @@ function subtreeHasMatch(node: TreeNode, matched: Set<string>): boolean {
 }
 
 const PAGE = 5;
+const RECENT_INITIAL = 5;
 
 interface Props {
   cli: CliId;
@@ -71,8 +72,9 @@ interface Props {
   collapsed: boolean;
   onToggleCollapse: () => void;
   favorites: FavoriteEntry[];
-  isFavorite: (id: string) => boolean;
+  isFavorite: (id: string, project?: string) => boolean;
   onToggleFavorite: (project: string, session: SessionInfo) => void;
+  onDeleteSession: (project: string, session: SessionInfo) => void;
 }
 
 const CLI_LABELS: Record<CliId, string> = {
@@ -91,6 +93,7 @@ export default function Sidebar({
   favorites,
   isFavorite,
   onToggleFavorite,
+  onDeleteSession,
 }: Props) {
   const [availableClis, setAvailableClis] = useState<CliOption[]>([]);
   const [cliMenuOpen, setCliMenuOpen] = useState(false);
@@ -98,8 +101,11 @@ export default function Sidebar({
   const [projects, setProjects] = useState<Project[]>([]);
   const [sessions, setSessions] = useState<Record<string, SessionInfo[]>>({});
   const [recentSessions, setRecentSessions] = useState<SessionInfo[]>([]);
+  const [recentLimit, setRecentLimit] = useState(RECENT_INITIAL);
+  const [recentHasMore, setRecentHasMore] = useState(false);
+  const [recentLoadingMore, setRecentLoadingMore] = useState(false);
   const [recentExpanded, setRecentExpanded] = useState(true);
-  const [favoritesExpanded, setFavoritesExpanded] = useState(true);
+  const [favoritesExpanded, setFavoritesExpanded] = useState(false);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
@@ -108,6 +114,11 @@ export default function Sidebar({
   const [loading, setLoading] = useState(true);
 
   const isSearching = search.trim().length > 0;
+  const favoriteProjects = useMemo(
+    () => Array.from(new Set(favorites.map((f) => f.project))),
+    [favorites]
+  );
+  const favoriteProjectsKey = favoriteProjects.join("\n");
 
   useEffect(() => {
     fetch("/api/clis")
@@ -121,21 +132,55 @@ export default function Sidebar({
     setProjects([]);
     setSessions({});
     setRecentSessions([]);
+    setRecentLimit(RECENT_INITIAL);
+    setRecentHasMore(false);
     setExpandedDirs(new Set());
     setExpandedProject(null);
     setVisibleCounts({});
     setSearchResults([]);
     Promise.all([
       fetch(`/api/projects?cli=${cli}`).then((r) => r.json()),
-      fetch(`/api/sessions/recent?cli=${cli}`).then((r) => r.json()),
+      fetch(`/api/sessions/recent?cli=${cli}&limit=${RECENT_INITIAL + 1}`).then((r) =>
+        r.json()
+      ),
     ])
-      .then(([projectsData, recentData]) => {
+      .then(([projectsData, recentData]: [Project[], SessionInfo[]]) => {
         setProjects(projectsData);
-        setRecentSessions(recentData);
+        setRecentHasMore(recentData.length > RECENT_INITIAL);
+        setRecentSessions(recentData.slice(0, RECENT_INITIAL));
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, [cli]);
+
+  const loadMoreRecent = async () => {
+    if (recentLoadingMore || !recentHasMore) return;
+    const next = recentLimit + PAGE;
+    setRecentLoadingMore(true);
+    try {
+      const res = await fetch(`/api/sessions/recent?cli=${cli}&limit=${next + 1}`);
+      const data: SessionInfo[] = await res.json();
+      setRecentHasMore(data.length > next);
+      setRecentSessions(data.slice(0, next));
+      setRecentLimit(next);
+    } catch {
+      // leave previous list intact
+    } finally {
+      setRecentLoadingMore(false);
+    }
+  };
+
+  // Drop a deleted session from local lists / per-project caches so it disappears
+  // immediately without a refetch.
+  const removeSessionLocally = (project: string, sessionId: string) => {
+    setRecentSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    setSessions((prev) => {
+      const list = prev[project];
+      if (!list) return prev;
+      return { ...prev, [project]: list.filter((s) => s.id !== sessionId) };
+    });
+    setSearchResults((prev) => prev.filter((s) => s.id !== sessionId));
+  };
 
   useEffect(() => {
     if (!cliMenuOpen) return;
@@ -174,6 +219,35 @@ export default function Sidebar({
     return () => clearTimeout(t);
   }, [search, cli]);
 
+  useEffect(() => {
+    if (favoriteProjects.length === 0) return;
+    const missing = favoriteProjects.filter((project) => !sessions[project]);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    Promise.all(
+      missing.map((project) =>
+        fetch(`/api/sessions/${project}?cli=${cli}`)
+          .then((r) => r.json())
+          .then((data: SessionInfo[]) => [project, data] as const)
+          .catch(() => [project, [] as SessionInfo[]] as const)
+      )
+    ).then((entries) => {
+      if (cancelled) return;
+      setSessions((prev) => {
+        const next = { ...prev };
+        for (const [project, data] of entries) {
+          next[project] = data;
+        }
+        return next;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cli, favoriteProjectsKey, sessions]);
+
   // Matched sessions grouped by project dirName (separate from the `sessions`
   // cache so search results never clobber the full per-project lists).
   const searchSessions = useMemo(() => {
@@ -193,6 +267,21 @@ export default function Sidebar({
     }
     return names;
   }, [projects, searchResults]);
+
+  const favoriteSessions = useMemo(
+    () =>
+      favorites.map((fav) => {
+        const fresh = sessions[fav.project]?.find((s) => s.id === fav.id);
+        return {
+          id: fav.id,
+          firstMessage: fresh?.firstMessage ?? fav.firstMessage,
+          timestamp: fresh?.timestamp ?? fav.timestamp,
+          messageCount: fresh?.messageCount ?? fav.messageCount,
+          project: fav.project,
+        };
+      }),
+    [favorites, sessions]
+  );
 
   const showMore = (dirName: string) => {
     setVisibleCounts((prev) => ({
@@ -226,6 +315,11 @@ export default function Sidebar({
       const data = await res.json();
       setSessions((prev) => ({ ...prev, [dirName]: data }));
     }
+  };
+
+  const handleDelete = (project: string, session: SessionInfo) => {
+    removeSessionLocally(project, session.id);
+    onDeleteSession(project, session);
   };
 
   if (collapsed) {
@@ -328,7 +422,7 @@ export default function Sidebar({
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-        {!isSearching && favorites.length > 0 && (
+        {!isSearching && favoriteSessions.length > 0 && (
           <div className="mb-2">
             <button
               onClick={() => setFavoritesExpanded((v) => !v)}
@@ -340,31 +434,25 @@ export default function Sidebar({
               <span className="text-xs text-yellow-500 shrink-0">★</span>
               <span className="truncate flex-1 font-medium text-xs">Favorites</span>
               <span className="text-[10px] text-dim shrink-0">
-                {favorites.length}
+                {favoriteSessions.length}
               </span>
             </button>
             {favoritesExpanded && (
               <div className="space-y-0.5 pl-5">
-                {favorites.map((fav) => {
-                  const session: SessionInfo = {
-                    id: fav.id,
-                    firstMessage: fav.firstMessage,
-                    timestamp: fav.timestamp,
-                    messageCount: fav.messageCount,
-                    project: fav.project,
-                  };
-                  return (
-                    <SessionItem
-                      key={`fav-${fav.id}`}
-                      session={session}
-                      isActive={activeSessionId === fav.id}
-                      isOpen={openSessionIds.has(fav.id)}
-                      isFavorite={true}
-                      onClick={() => onSelectSession(fav.project, session)}
-                      onToggleFavorite={() => onToggleFavorite(fav.project, session)}
-                    />
-                  );
-                })}
+                {favoriteSessions.map((session) => (
+                  <SessionItem
+                    key={`fav-${session.project}-${session.id}`}
+                    session={session}
+                    isActive={activeSessionId === session.id}
+                    isOpen={openSessionIds.has(session.id)}
+                    isFavorite={true}
+                    onClick={() => onSelectSession(session.project!, session)}
+                    onToggleFavorite={() =>
+                      onToggleFavorite(session.project!, session)
+                    }
+                    onDelete={() => handleDelete(session.project!, session)}
+                  />
+                ))}
               </div>
             )}
             <div className="border-b border-edge mt-2" />
@@ -394,11 +482,23 @@ export default function Sidebar({
                     session={session}
                     isActive={activeSessionId === session.id}
                     isOpen={openSessionIds.has(session.id)}
-                    isFavorite={isFavorite(session.id)}
+                    isFavorite={isFavorite(session.id, session.project)}
                     onClick={() => onSelectSession(session.project!, session)}
                     onToggleFavorite={() => onToggleFavorite(session.project!, session)}
+                    onDelete={() => handleDelete(session.project!, session)}
                   />
                 ))}
+                {recentHasMore && (
+                  <button
+                    onClick={loadMoreRecent}
+                    disabled={recentLoadingMore}
+                    className="w-full text-left px-3 py-1.5 rounded-md text-xs text-dim hover:bg-accent-soft hover:text-accent transition-colors disabled:opacity-50"
+                  >
+                    {recentLoadingMore
+                      ? "加载中…"
+                      : `⋯ 显示更多（再加载 ${PAGE} 条）`}
+                  </button>
+                )}
               </div>
             )}
             <div className="border-b border-edge mt-2" />
@@ -421,6 +521,7 @@ export default function Sidebar({
             openSessionIds={openSessionIds}
             isFavorite={isFavorite}
             onToggleFavorite={onToggleFavorite}
+            onDelete={handleDelete}
             onToggleDir={toggleDir}
             onToggleProject={toggleProject}
             onSelectSession={onSelectSession}
@@ -450,8 +551,9 @@ interface TreeNodeItemProps {
   matchedProjectNames: Set<string>;
   activeSessionId: string | null;
   openSessionIds: Set<string>;
-  isFavorite: (id: string) => boolean;
+  isFavorite: (id: string, project?: string) => boolean;
   onToggleFavorite: (project: string, session: SessionInfo) => void;
+  onDelete: (project: string, session: SessionInfo) => void;
   onToggleDir: (path: string) => void;
   onToggleProject: (dirName: string) => void;
   onSelectSession: (project: string, session: SessionInfo) => void;
@@ -472,6 +574,7 @@ function TreeNodeItem({
   openSessionIds,
   isFavorite,
   onToggleFavorite,
+  onDelete,
   onToggleDir,
   onToggleProject,
   onSelectSession,
@@ -548,9 +651,10 @@ function TreeNodeItem({
                     session={session}
                     isActive={activeSessionId === session.id}
                     isOpen={openSessionIds.has(session.id)}
-                    isFavorite={isFavorite(session.id)}
+                    isFavorite={isFavorite(session.id, dir)}
                     onClick={() => onSelectSession(dir, session)}
                     onToggleFavorite={() => onToggleFavorite(dir, session)}
+                    onDelete={() => onDelete(dir, session)}
                   />
                 ))}
                 {hasMore && (
@@ -582,6 +686,7 @@ function TreeNodeItem({
                 openSessionIds={openSessionIds}
                 isFavorite={isFavorite}
                 onToggleFavorite={onToggleFavorite}
+                onDelete={onDelete}
                 onToggleDir={onToggleDir}
                 onToggleProject={onToggleProject}
                 onSelectSession={onSelectSession}

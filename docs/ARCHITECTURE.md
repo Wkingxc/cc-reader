@@ -38,14 +38,14 @@ cc-reader/
 │   │   └── index.ts        getSource(id) 路由 + getAvailableCliIds 探测
 │   └── routes/
 │       ├── projects.ts     GET /api/projects?cli=
-│       ├── sessions.ts     /recent · /search · /:project · /:project/:sessionId（支持轮分页）
+│       ├── sessions.ts     /recent · /search · /:project · /:project/:sessionId（轮分页 · DELETE 真删）
 │       └── images.ts       GET /api/image/:project/:sessionId/:imageId 流式输出 PNG/JPEG
 ├── src/                    前端（React）
 │   ├── main.tsx            React 挂载入口
 │   ├── App.tsx             ★ 状态中枢：标签页、活动会话、CLI、收藏、WS、轮分页
 │   ├── index.css           主题 CSS 变量、动画、prose 排版样式
 │   ├── components/         UI 组件（见 §5）
-│   ├── hooks/              useTheme / useIsDark / useFontSize / useWebSocket / useScrollTo / useCli / useFavorites
+│   ├── hooks/              useTheme / useIsDark / useFontSize / useWebSocket / useScrollTo / useCli / useFavorites / useShowTools / useReadingWidth
 │   ├── types/message.ts    全局 TypeScript 类型定义（含 CliId / ImageRef / SessionPage / TabData 等）
 │   └── utils/parseContent.ts  前端文本提取 / 工具摘要 / 公式解包
 ├── vite.config.ts          Vite + 开发代理（/api、/ws → :3456）
@@ -154,12 +154,13 @@ interface CliSource {
 |-------------|------|------|
 | `GET /api/clis` | 本机检测到的 CLI 列表 | `[{id, label}]` |
 | `GET /api/projects?cli=` | 列出所有有会话的项目 | `Project[]` |
-| `GET /api/sessions/recent?cli=` | 全局最近 5 个会话 | `SessionInfo[]` |
+| `GET /api/sessions/recent?cli=&limit=` | 全局最近 N 个会话（默认 5，封顶 200） | `SessionInfo[]` |
 | `GET /api/sessions/search?cli=&q=` | 按路径名或会话标题搜索 | `SessionInfo[]` |
 | `GET /api/sessions/:project?cli=` | 某项目下所有会话 | `SessionInfo[]` |
 | `GET /api/sessions/:project/:sessionId?cli=` | 单个会话的完整消息（无分页参数时返回数组） | `Message[]` |
 | `GET /api/sessions/:project/:sessionId?cli=&recentRounds=N` | 最近 N 轮 | `SessionPage` |
 | `GET /api/sessions/:project/:sessionId?cli=&beforeRound=K&rounds=N` | 早于第 K 轮的 N 轮 | `SessionPage` |
+| `DELETE /api/sessions/:project/:sessionId?cli=` | **真删** 本地 jsonl（TRAE 同时删 `*.artifacts/`），404 表示文件不存在 | `{ok:true}` |
 | `GET /api/image/:project/:sessionId/:imageId?cli=claude` | 单张图片字节流（按需，带 `Cache-Control`） | image/png \| image/jpeg |
 
 `SessionPage = {messages, totalRounds, oldestLoadedRound, hasMore}`。**不传分页参数时维持旧行为**（直接返回数组），向后兼容老代码与第三方调用。
@@ -179,7 +180,7 @@ interface CliSource {
 - Express 挂载 `/api/clis`、`/api/projects`、`/api/sessions`、`/api/image` 路由；生产模式下静态托管 `dist/`（含 favicon），并对非 API 路由回退 `index.html`（SPA）。
 - 在同一个 HTTP server 上挂 WebSocketServer（path `/ws`），消息类型：`watch`（带 cli/project/session）/ `unwatch`。
 - `findOpenPort` 从 `PORT`（默认 3456）起递增找空闲端口。
-- 启动后用系统命令自动打开浏览器（`open`/`start`/`xdg-open`）。
+- 启动后默认用系统命令自动打开浏览器（`open`/`start`/`xdg-open`）；调试时可设 `CC_READER_OPEN=0` 禁用自动打开，避免抢占现有浏览器窗口。
 - 启动前检查 `~/.claude` 与 `~/.trae/cli/sessions` **至少一个存在**，否则报错退出。
 
 ---
@@ -239,7 +240,9 @@ MessageList            滚动容器；新消息时若用户在底部则自动滚
 | `useIsDark` | 用 MutationObserver 监听 `.dark` class，供代码高亮选明暗样式 |
 | `useFontSize` | 字号状态（12–28px）+ `Ctrl/Cmd +/-` 快捷键 + 持久化，写入 `--font-size` 变量 |
 | `useCli` | 当前 CLI（claude/trae）+ localStorage 持久化，切换时由 App 负责清 tabs |
-| `useFavorites(cli)` | 当前 CLI 的收藏列表（localStorage key `ccreader.favorites.<cli>`），暴露 `favorites/isFavorite/toggle` |
+| `useFavorites(cli)` | 当前 CLI 的收藏列表（localStorage key `ccreader.favorites.<cli>`），暴露 `favorites/isFavorite/toggle/remove`（`remove` 用于删除会话时同步清理收藏） |
+| `useShowTools` | "是否展示工具调用输出"开关（localStorage `ccreader.showTools`）；`MessageList` 据此跳过纯工具调用的消息，`AssistantMessage` 据此屏蔽行内的 `ToolCallBlock` |
+| `useReadingWidth` | 阅读区最大宽度档位（`narrow` 720 / `normal` 896 / `wide` 1200 / `full` 不限），localStorage key `ccreader.readingWidth`；导出 `maxWidth` 字符串供 `MessageList` 外层 `style` 使用 |
 | `useWebSocket` | WS 连接、自动重连（指数退避，上限 30s）、`watch(cli, project, session)`/`unwatch`、连接状态 |
 | `useScrollTo` | 按消息 uuid 平滑滚动并短暂高亮（QuestionNav 跳转用） |
 
@@ -295,14 +298,18 @@ MessageList            滚动容器；新消息时若用户在底部则自动滚
 | 实时推送逻辑 / 监听策略 | `server/watcher.ts` |
 | 侧栏搜索/分页/树展示 | `src/components/Sidebar.tsx` + `routes/sessions.ts` 的 `/search` |
 | 收藏夹存储/排序 | `src/hooks/useFavorites.ts`（store 形状 + key 命名） |
-| 收藏入口星标样式 | `src/components/SessionItem.tsx` |
+| 收藏入口星标样式 / 删除按钮 / inline 确认 | `src/components/SessionItem.tsx` |
+| 删除会话（真删本地文件） | 后端 `server/sources/{claude,trae}.ts` 的 `deleteSession` + `server/routes/sessions.ts` 的 `DELETE /:project/:sessionId` + 前端 `App.tsx` 的 `handleDeleteSession` |
+| Recent 显示条数 / 加载更多 | `src/components/Sidebar.tsx` 的 `RECENT_INITIAL` / `loadMoreRecent` + `server/routes/sessions.ts` `/recent?limit=` |
+| 工具调用输出显隐开关 | `src/hooks/useShowTools.ts`（localStorage `ccreader.showTools`）+ `Toolbar.tsx` 眼睛按钮 + `MessageList.tsx` / `AssistantMessage.tsx` 过滤逻辑 |
+| 阅读区宽度档位 | `src/hooks/useReadingWidth.ts`（4 档预设：narrow/normal/wide/full，localStorage `ccreader.readingWidth`）+ `Toolbar.tsx` 宽度选择器 + `MessageList.tsx` 外层 `style={{ maxWidth }}` |
 | 字号范围/快捷键 | `src/hooks/useFontSize.ts` |
 | 消息卡片样式（用户/Claude） | `src/components/UserMessage.tsx` / `AssistantMessage.tsx` |
 | 图片渲染（懒加载/尺寸/点开行为） | `src/components/UserMessage.tsx` 的 `<img>` 块 + `server/routes/images.ts` |
 | 标签页行为 | `src/components/TabBar.tsx` + `App.tsx` 的 tab 状态逻辑 |
 | 问题导航 / "加载更早 N 轮"按钮 | `src/components/QuestionNav.tsx` + `App.tsx` 的 `handleLoadMore` |
 | 每次加载多少轮（默认 10） | `src/App.tsx` 顶部的 `ROUNDS_PER_PAGE` |
-| 默认端口 / 启动行为 | `server/index.ts`（`PORT` 环境变量、`findOpenPort`、开浏览器命令） |
+| 默认端口 / 启动行为 | `server/index.ts`（`PORT` / `CC_READER_OPEN` 环境变量、`findOpenPort`、开浏览器命令） |
 | 站点图标 | `public/favicon.svg` + `index.html` 的 `<link rel="icon">` |
 | 开发代理端口 | `vite.config.ts` |
 

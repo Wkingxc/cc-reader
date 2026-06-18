@@ -45,16 +45,19 @@ export function useFavorites(cli: CliId) {
   }, [cli]);
 
   const isFavorite = useCallback(
-    (id: string) => favorites.some((f) => f.id === id),
+    (id: string, project?: string) =>
+      favorites.some((f) => f.id === id && (!project || f.project === project)),
     [favorites]
   );
 
   const toggle = useCallback(
     (project: string, session: SessionInfo) => {
       setFavorites((prev) => {
-        const existing = prev.find((f) => f.id === session.id);
+        const existing = prev.find(
+          (f) => f.id === session.id && f.project === project
+        );
         const next = existing
-          ? prev.filter((f) => f.id !== session.id)
+          ? prev.filter((f) => !(f.id === session.id && f.project === project))
           : [
               ...prev,
               {
@@ -73,5 +76,17 @@ export function useFavorites(cli: CliId) {
     [cli]
   );
 
-  return { favorites, isFavorite, toggle };
+  const remove = useCallback(
+    (project: string, id: string) => {
+      setFavorites((prev) => {
+        if (!prev.some((f) => f.id === id && f.project === project)) return prev;
+        const next = prev.filter((f) => !(f.id === id && f.project === project));
+        write(cli, next);
+        return next;
+      });
+    },
+    [cli]
+  );
+
+  return { favorites, isFavorite, toggle, remove };
 }

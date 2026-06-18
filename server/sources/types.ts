@@ -24,6 +24,7 @@ export interface CliSource {
   searchSessions(query: string): SessionListItem[];
   parseSession(projectDirName: string, sessionId: string): ParsedMessage[] | null;
   resolveSessionFile(projectDirName: string, sessionId: string): string | null;
+  deleteSession(projectDirName: string, sessionId: string): boolean;
   parseNewBytes(filePath: string, fromByte: number): { messages: ParsedMessage[]; newOffset: number };
   getImage?(
     projectDirName: string,

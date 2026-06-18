@@ -17,6 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3456", 10);
+const SHOULD_OPEN_BROWSER = process.env.CC_READER_OPEN !== "0";
 
 app.use(express.json());
 
@@ -82,6 +83,7 @@ async function main() {
   server.listen(port, () => {
     const url = `http://localhost:${port}`;
     console.log(`CC Reader running at ${url}`);
+    if (!SHOULD_OPEN_BROWSER) return;
 
     const platform = process.platform;
     const cmd =

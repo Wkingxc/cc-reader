@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { CliId, Message } from "../types/message";
+import { extractTextContent } from "../utils/parseContent";
 import UserMessage from "./UserMessage";
 import AssistantMessage from "./AssistantMessage";
 
@@ -9,9 +10,19 @@ interface Props {
   cli: CliId;
   project: string;
   sessionId: string;
+  showTools: boolean;
+  maxWidth: string;
 }
 
-export default function MessageList({ messages, userQuestionIndices, cli, project, sessionId }: Props) {
+export default function MessageList({
+  messages,
+  userQuestionIndices,
+  cli,
+  project,
+  sessionId,
+  showTools,
+  maxWidth,
+}: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const wasAtBottom = useRef(true);
@@ -45,7 +56,10 @@ export default function MessageList({ messages, userQuestionIndices, cli, projec
 
   return (
     <div ref={containerRef} className="flex-1 overflow-y-auto p-4">
-      <div className="max-w-4xl mx-auto">
+      <div
+        className="mx-auto transition-[max-width] duration-200"
+        style={{ maxWidth }}
+      >
       {messages.map((msg) => {
         if (msg.type === "user") {
           return (
@@ -60,9 +74,15 @@ export default function MessageList({ messages, userQuestionIndices, cli, projec
             </div>
           );
         }
+        // When tool output is hidden, skip assistant turns that are purely
+        // tool calls (no text). Mixed turns still render their narration.
+        const text = extractTextContent(msg.content).trim();
+        if (!showTools && !text && (msg.toolCalls?.length ?? 0) > 0) {
+          return null;
+        }
         return (
           <div key={msg.uuid} className="cc-msg-in">
-            <AssistantMessage message={msg} />
+            <AssistantMessage message={msg} showTools={showTools} />
           </div>
         );
       })}

@@ -48,7 +48,10 @@ export default function MarkdownContent({ content }: Props) {
             );
           }
           return (
-            <code className="bg-accent-soft text-ink px-1.5 py-0.5 rounded text-sm" {...props}>
+            <code
+              className="cc-inline-code bg-accent-soft text-ink px-1.5 rounded text-sm"
+              {...props}
+            >
               {children}
             </code>
           );

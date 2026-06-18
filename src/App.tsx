@@ -11,6 +11,8 @@ import { useFontSize } from "./hooks/useFontSize";
 import { useTheme } from "./hooks/useTheme";
 import { useCli } from "./hooks/useCli";
 import { useFavorites } from "./hooks/useFavorites";
+import { useShowTools } from "./hooks/useShowTools";
+import { useReadingWidth } from "./hooks/useReadingWidth";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { useScrollTo } from "./hooks/useScrollTo";
 import Sidebar from "./components/Sidebar";
@@ -30,7 +32,11 @@ export default function App() {
   const { fontSize, increase, decrease } = useFontSize();
   const { theme, setTheme } = useTheme();
   const { cli, setCli } = useCli();
-  const { favorites, isFavorite, toggle: toggleFavorite } = useFavorites(cli);
+  const { favorites, isFavorite, toggle: toggleFavorite, remove: removeFavorite } =
+    useFavorites(cli);
+  const { showTools, toggle: toggleShowTools } = useShowTools();
+  const { width: readingWidth, setWidth: setReadingWidth, maxWidth } =
+    useReadingWidth();
   const { scrollTo } = useScrollTo();
 
   const activeTabIdRef = useRef(activeTabId);
@@ -167,6 +173,39 @@ export default function App() {
     [cli, setCli, unwatch]
   );
 
+  const handleDeleteSession = useCallback(
+    async (project: string, session: SessionInfo) => {
+      // Optimistically close any open tab for this session and stop watching it.
+      setTabs((prev) => {
+        const remaining = prev.filter((t) => t.id !== session.id);
+        if (activeTabIdRef.current === session.id) {
+          unwatch();
+          if (remaining.length > 0) {
+            const closedIndex = prev.findIndex((t) => t.id === session.id);
+            const newIndex = Math.min(closedIndex, remaining.length - 1);
+            const nextTab = remaining[newIndex];
+            setActiveTabId(nextTab.id);
+            watch(nextTab.cli, nextTab.project, nextTab.id);
+          } else {
+            setActiveTabId(null);
+          }
+        }
+        return remaining;
+      });
+      removeFavorite(project, session.id);
+
+      try {
+        await fetch(
+          `/api/sessions/${project}/${session.id}?cli=${cli}`,
+          { method: "DELETE" }
+        );
+      } catch {
+        // best-effort: even if the server call fails, the UI is already cleaned up.
+      }
+    },
+    [cli, watch, unwatch, removeFavorite]
+  );
+
   const activeTab = useMemo(
     () => tabs.find((t) => t.id === activeTabId) ?? null,
     [tabs, activeTabId]
@@ -213,6 +252,7 @@ export default function App() {
         favorites={favorites}
         isFavorite={isFavorite}
         onToggleFavorite={toggleFavorite}
+        onDeleteSession={handleDeleteSession}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -231,6 +271,10 @@ export default function App() {
           connected={connected}
           theme={theme}
           onSelectTheme={setTheme}
+          showTools={showTools}
+          onToggleTools={toggleShowTools}
+          width={readingWidth}
+          onSelectWidth={setReadingWidth}
         />
 
         <MessageList
@@ -239,6 +283,8 @@ export default function App() {
           cli={activeTab?.cli ?? cli}
           project={activeTab?.project ?? ""}
           sessionId={activeTab?.id ?? ""}
+          showTools={showTools}
+          maxWidth={maxWidth}
         />
       </div>
 

@@ -184,3 +184,27 @@ body {
 
 .katex { color: var(--c-ink); }
 .dark .katex { color: #f1f5f9; }
+
+/* 行内删除二次确认：从右侧滑入 */
+@keyframes cc-confirm-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.cc-confirm-in {
+  animation: cc-confirm-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* 行内代码胶囊：保证相邻胶囊之间始终留出可视间隙
+   （文字之间的普通空格在两个 padding 的胶囊之间会显得太紧或干脆贴在一起）。 */
+.cc-inline-code {
+  /* 横向：相邻两个胶囊之间永远留出半个字宽的空气 */
+  margin-inline: 0.15em;
+  /* 纵向：胶囊只比字符稍高一点，靠 prose 的 line-height 在换行时给出缝
+     ——避免段落里多个胶囊纵向粘成一片紫 */
+  display: inline-block;
+  line-height: 1.35;
+  padding-block: 0.05em;
+  vertical-align: baseline;
+  /* 长 path / 长命令该断就断 */
+  overflow-wrap: anywhere;
+}

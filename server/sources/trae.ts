@@ -369,6 +369,28 @@ export const traeSource: CliSource = {
     return s ? s.filePath : null;
   },
 
+  deleteSession(projectDirName: string, sessionId: string): boolean {
+    const filePath = this.resolveSessionFile(projectDirName, sessionId);
+    if (!filePath) return false;
+    try {
+      fs.unlinkSync(filePath);
+      // Remove the paired *.artifacts dir if present (TRAE side-files).
+      const artifactsDir = filePath.replace(/\.jsonl$/, ".artifacts");
+      if (fs.existsSync(artifactsDir)) {
+        try {
+          fs.rmSync(artifactsDir, { recursive: true, force: true });
+        } catch {
+          // best-effort
+        }
+      }
+      // Force a fresh scan on the next request.
+      cache = null;
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
   parseSession(projectDirName: string, sessionId: string): ParsedMessage[] | null {
     const filePath = this.resolveSessionFile(projectDirName, sessionId);
     if (!filePath) return null;

@@ -5,13 +5,18 @@ import ToolCallBlock from "./ToolCallBlock";
 
 interface Props {
   message: Message;
+  showTools?: boolean;
 }
 
-export default function AssistantMessage({ message }: Props) {
+export default function AssistantMessage({ message, showTools = true }: Props) {
   const text = extractTextContent(message.content);
   const toolCalls = message.toolCalls ?? [];
 
   if (!text.trim() && toolCalls.length === 0) return null;
+  // When tool output is hidden and this assistant turn is purely a tool call
+  // (no narration), drop the entire bubble — caller filters it in too, but
+  // returning null here keeps the component safe to render directly.
+  if (!showTools && !text.trim()) return null;
 
   return (
     <div
@@ -35,9 +40,8 @@ export default function AssistantMessage({ message }: Props) {
         </div>
       )}
 
-      {toolCalls.map((tc, i) => (
-        <ToolCallBlock key={tc.id || i} tool={tc} />
-      ))}
+      {showTools &&
+        toolCalls.map((tc, i) => <ToolCallBlock key={tc.id || i} tool={tc} />)}
     </div>
   );
 }

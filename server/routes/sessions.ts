@@ -6,7 +6,25 @@ const router = Router();
 
 router.get("/recent", (req, res) => {
   const source = getSource(req.query.cli as string | undefined);
-  res.json(source.recentSessions(5));
+  const limitRaw = req.query.limit;
+  let limit = 5;
+  if (limitRaw != null) {
+    const parsed = parseInt(String(limitRaw), 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      limit = Math.min(parsed, 200);
+    }
+  }
+  res.json(source.recentSessions(limit));
+});
+
+router.delete("/:project/:sessionId", (req, res) => {
+  const source = getSource(req.query.cli as string | undefined);
+  const ok = source.deleteSession(req.params.project, req.params.sessionId);
+  if (!ok) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+  res.json({ ok: true });
 });
 
 router.get("/search", (req, res) => {
