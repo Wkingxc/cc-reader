@@ -87,7 +87,7 @@ export default function QuestionNav({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
         {hasMore && !search && (
           <button
             onClick={onLoadMore}
@@ -106,7 +106,7 @@ export default function QuestionNav({
           <button
             key={q.uuid}
             onClick={() => onJump(q.uuid)}
-            className="cc-question-item w-full text-left px-3 py-2.5 text-sm text-ink hover:bg-accent-soft transition-colors border-b border-edge group"
+            className="cc-question-item w-full text-left px-3 py-2.5 text-sm text-ink hover:bg-accent-soft transition-colors group"
           >
             <span className="text-accent font-mono mr-1.5 text-xs font-medium group-hover:text-accent">
               #{q.index}

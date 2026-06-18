@@ -101,10 +101,10 @@ export default function SessionItem({
   }, [confirming]);
 
   const stateClass = isActive
-    ? "cc-session-sel bg-sel-bg text-sel-ink"
+    ? "cc-session-card cc-session-sel text-sel-ink"
     : isOpen
-      ? "text-ink bg-accent-soft hover:translate-x-0.5"
-      : "text-dim hover:bg-accent-soft hover:text-ink hover:translate-x-0.5";
+      ? "cc-session-card text-ink bg-accent-soft hover:translate-x-0.5"
+      : "cc-session-card text-dim hover:bg-accent-soft hover:text-ink hover:translate-x-0.5";
 
   // Right-padding budget for the title row. The two trailing controls stack
   // vertically (delete on top, favorite below) so a single column is enough.
@@ -115,7 +115,7 @@ export default function SessionItem({
     <div ref={rootRef} className="relative group">
       <button
         onClick={onClick}
-        className={`relative w-full text-left ${trailingPad} pl-3 py-2 rounded-md text-sm transition-all duration-200 ${stateClass}`}
+        className={`relative w-full text-left ${trailingPad} pl-3 py-2 text-sm transition-all duration-200 ${stateClass}`}
       >
         <div className="truncate">{session.firstMessage || "(empty)"}</div>
         <div className="text-xs text-dim mt-0.5">
