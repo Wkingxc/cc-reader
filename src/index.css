@@ -218,6 +218,12 @@ body {
   background: var(--c-code-bg) !important;
 }
 
+[data-theme="blue"] .prose code[class*="language-"],
+[data-theme="dark"] .prose code[class*="language-"],
+.dark .prose code[class*="language-"] {
+  background: transparent !important;
+}
+
 [data-theme="blue"] .prose pre span,
 [data-theme="dark"] .prose pre span,
 .dark .prose pre span {
