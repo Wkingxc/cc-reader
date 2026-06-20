@@ -6,7 +6,7 @@ import type {
   SessionPage,
   TabData,
 } from "./types/message";
-import { getUserQuestions, extractTextContent } from "./utils/parseContent";
+import { getUserQuestions } from "./utils/parseContent";
 import { useFontSize } from "./hooks/useFontSize";
 import { useTheme } from "./hooks/useTheme";
 import { useCli } from "./hooks/useCli";
@@ -218,20 +218,6 @@ export default function App() {
     [activeMessages, activeStartIndex]
   );
 
-  const userQuestionIndices = useMemo(() => {
-    const map = new Map<string, number>();
-    let idx = activeStartIndex - 1;
-    for (const msg of activeMessages) {
-      if (msg.type === "user") {
-        const text = extractTextContent(msg.content).trim();
-        if (!text) continue;
-        idx++;
-        map.set(msg.uuid, idx);
-      }
-    }
-    return map;
-  }, [activeMessages, activeStartIndex]);
-
   const openSessionIds = useMemo(
     () => new Set(tabs.map((t) => t.id)),
     [tabs]
@@ -277,15 +263,25 @@ export default function App() {
           onSelectWidth={setReadingWidth}
         />
 
-        <MessageList
-          messages={activeMessages}
-          userQuestionIndices={userQuestionIndices}
-          cli={activeTab?.cli ?? cli}
-          project={activeTab?.project ?? ""}
-          sessionId={activeTab?.id ?? ""}
-          showTools={showTools}
-          maxWidth={maxWidth}
-        />
+        {tabs.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center text-dim">
+            Select a session to view messages
+          </div>
+        ) : (
+          tabs.map((tab) => (
+            <MessageList
+              key={tab.id}
+              messages={tab.messages}
+              startIndex={tab.oldestLoadedRound ?? 1}
+              cli={tab.cli}
+              project={tab.project}
+              sessionId={tab.id}
+              showTools={showTools}
+              maxWidth={maxWidth}
+              active={tab.id === activeTabId}
+            />
+          ))
+        )}
       </div>
 
       <QuestionNav
