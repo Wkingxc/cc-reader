@@ -212,27 +212,18 @@ body {
   border-color: color-mix(in srgb, var(--c-accent) 42%, transparent);
 }
 
-[data-theme="blue"] .prose pre,
-[data-theme="dark"] .prose pre,
-.dark .prose pre {
+.prose pre,
+.prose [class*="language-"] {
   background: var(--c-code-bg) !important;
 }
 
-[data-theme="blue"] .prose code[class*="language-"],
-[data-theme="dark"] .prose code[class*="language-"],
-.dark .prose code[class*="language-"] {
+.prose code[class*="language-"],
+.prose code[class*="language-"] span,
+.prose [class*="language-"] span {
   background: transparent !important;
 }
 
-[data-theme="blue"] .prose pre span,
-[data-theme="dark"] .prose pre span,
-.dark .prose pre span {
-  background: transparent !important;
-}
-
-[data-theme="blue"] .prose code,
-[data-theme="dark"] .prose code,
-.dark .prose code {
+.prose code {
   color: inherit;
 }
 

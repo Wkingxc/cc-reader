@@ -8,7 +8,7 @@
 
 ## 1. 技术栈与定位
 
-CC Reader 是一个**纯本地**的 CLI 对话查看器：读取 `~/.claude/projects/`（Claude Code）和 `~/.trae/cli/sessions/`（TRAE CLI）下的 JSONL 日志，在浏览器里渲染成可读的对话界面。无数据库、无外部依赖、不联网、不需要 API Key。
+CC Reader 是一个**纯本地**的 CLI 对话查看器：读取 `~/.claude/projects/`（Claude Code）、`~/.trae/cli/sessions/`（TRAE CLI）和 `~/.codex/sessions/`（Codex CLI）下的 JSONL 日志，在浏览器里渲染成可读的对话界面。无数据库、无外部依赖、不联网、不需要 API Key。
 
 | 层 | 技术 |
 |----|------|
@@ -35,6 +35,7 @@ cc-reader/
 │   │   ├── types.ts        CliSource 接口（projects/sessions/parse/getImage…）
 │   │   ├── claude.ts       Claude Code（~/.claude）实现
 │   │   ├── trae.ts         TRAE CLI（~/.trae/cli/sessions/YYYY/MM/DD/rollout-*.jsonl）实现
+│   │   ├── codex.ts        Codex CLI（~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl）实现
 │   │   └── index.ts        getSource(id) 路由 + getAvailableCliIds 探测
 │   └── routes/
 │       ├── projects.ts     GET /api/projects?cli=
@@ -63,6 +64,7 @@ cc-reader/
 ```
 ~/.claude/projects/<encoded-cwd>/<会话>.jsonl       ← Claude Code 写入
 ~/.trae/cli/sessions/YYYY/MM/DD/rollout-*.jsonl     ← TRAE CLI 写入
+~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl         ← Codex CLI 写入
         │
         │  ① 首屏 / 切换会话：REST 拉取（按需轮分页）
         │  ② 对话进行中：WebSocket 增量推送
@@ -92,7 +94,7 @@ cc-reader/
 
 **多条数据通路**：
 
-1. **CLI 选择**：前端启动时 `GET /api/clis` 探测本机已安装哪些 CLI；`useCli` 把当前选择持久化到 localStorage。所有后续 REST/WS 请求都带 `?cli=claude|trae` 或 `{cli}` 字段，后端 `getSource(id)` 路由到对应实现。
+1. **CLI 选择**：前端启动时 `GET /api/clis` 探测本机已安装哪些 CLI；`useCli` 把当前选择持久化到 localStorage。所有后续 REST/WS 请求都带 `?cli=claude|trae|codex` 或 `{cli}` 字段，后端 `getSource(id)` 路由到对应实现。
 2. **轮分页加载**（REST）：用户在侧栏点开会话 → `GET /api/sessions/:project/:sessionId?cli=&recentRounds=10`，只返回最近 10 轮（一轮 = 一次用户提问 + 它之后的所有 assistant/tool 消息）。点击 QuestionNav 顶部"加载更早 10 轮"则发 `&beforeRound=N&rounds=10`，把更老的轮 prepend 到 messages。响应形状 `{messages, totalRounds, oldestLoadedRound, hasMore}`。
 3. **实时增量**（WebSocket）：打开会话后前端发 `{type:"watch", cli, project, session}`；后端 watcher 用 chokidar 监听该文件并通过对应 source 的 `parseNewBytes` 增量解析，通过 WS 推 `{type:"new-messages"}`，前端 append 到当前标签页。
 4. **图片按需**（仅 Claude）：解析时 user 消息的 `image` 块**不返回 base64**，只附带轻量引用 `{id: "<msgUuid>:<idx>", mediaType}`。前端 `<img src="/api/image/:project/:sessionId/:imageId?cli=claude">` 触发后端 `claudeSource.getImage` 重新读 jsonl 那条记录、解码 base64 流式返回。浏览器自带 HTTP 缓存避免重复读取。
@@ -107,7 +109,7 @@ cc-reader/
 
 ```ts
 interface CliSource {
-  id: "claude" | "trae";
+  id: "claude" | "trae" | "codex";
   exists(): boolean;
   listProjects(): ProjectInfo[];
   listSessions(projectDirName: string): SessionListItem[];
@@ -132,6 +134,12 @@ interface CliSource {
 - 文件首行是 `session_meta`，其 `payload.cwd` 即对应 project；用与 claude 同样的 `-Users-xxx-foo` 编码作 dirName，方便统一 URL 形态。
 - 事件格式 `{timestamp, type, payload}`：`response_item.payload.type === "message"` 转 user/assistant，`function_call` + `function_call_output` 按 `call_id` 配对成 toolCall。
 - 过滤开头注入的"Today's date is …"等系统文本，让首句标题真实反映用户问题。
+- 5s 索引缓存：扫描所有 rollout 文件按 cwd 聚合，避免每次 REST 都重新 walk 整个目录树。
+
+**`codex.ts`**：处理 `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`。
+- 目录结构与 rollout 事件格式和 TRAE 同源，但独立实现，避免改动已稳定的 TRAE source。
+- 只渲染 `response_item` 中的 `message`（user/assistant）和 `function_call`；跳过 `event_msg` 的重复消息、`developer` 注入指令、`reasoning` 加密块与 token 统计。
+- user 消息里的 `input_image` data URI 不直接进入消息体，只生成 `{id, mediaType}` 引用，并通过 `getImage` 按需解码流式返回。
 - 5s 索引缓存：扫描所有 rollout 文件按 cwd 聚合，避免每次 REST 都重新 walk 整个目录树。
 
 ### 4.2 parser.ts —— 通用 helpers
@@ -161,7 +169,7 @@ interface CliSource {
 | `GET /api/sessions/:project/:sessionId?cli=&recentRounds=N` | 最近 N 轮 | `SessionPage` |
 | `GET /api/sessions/:project/:sessionId?cli=&beforeRound=K&rounds=N` | 早于第 K 轮的 N 轮 | `SessionPage` |
 | `DELETE /api/sessions/:project/:sessionId?cli=` | **真删** 本地 jsonl（TRAE 同时删 `*.artifacts/`），404 表示文件不存在 | `{ok:true}` |
-| `GET /api/image/:project/:sessionId/:imageId?cli=claude` | 单张图片字节流（按需，带 `Cache-Control`） | image/png \| image/jpeg |
+| `GET /api/image/:project/:sessionId/:imageId?cli=claude|codex` | 单张图片字节流（按需，带 `Cache-Control`） | image/png \| image/jpeg |
 
 `SessionPage = {messages, totalRounds, oldestLoadedRound, hasMore}`。**不传分页参数时维持旧行为**（直接返回数组），向后兼容老代码与第三方调用。
 
@@ -192,7 +200,7 @@ interface CliSource {
 `App` 持有所有顶层状态，是数据流的汇聚点：
 
 - **`tabs: TabData[]` + `activeTabId`** —— 多标签页。每个 `TabData` 含 `cli/project/session/messages/totalRounds/oldestLoadedRound/hasMore/loadingMore`，跨 CLI 时正确路由 watch 与图片 URL。
-- **`cli` / `useCli`** —— 当前 CLI（claude/trae），localStorage 持久化。切 CLI 时 `handleSelectCli` 清掉所有 tabs（不同 CLI 的 session id 不通用）。
+- **`cli` / `useCli`** —— 当前 CLI（claude/trae/codex），localStorage 持久化。切 CLI 时 `handleSelectCli` 清掉所有 tabs（不同 CLI 的 session id 不通用）。
 - **`favorites` / `useFavorites(cli)`** —— 收藏列表（按 CLI 隔离）。透到 Sidebar 用于顶部 Favorites 区与每条 SessionItem 的星标。
 - **打开会话 `handleOpenTab`**：已打开则激活；否则 `fetch(...?cli=&recentRounds=10)` 拿 `SessionPage` 建新标签页，存好 `oldestLoadedRound/hasMore`。
 - **加载更早 `handleLoadMore`**：`fetch(...?cli=&beforeRound=N&rounds=10)` → 把更老消息 prepend 到当前 tab，更新 `oldestLoadedRound/hasMore`。绑到 QuestionNav 顶部按钮。
@@ -239,7 +247,7 @@ MessageList            滚动容器；新消息时若用户在底部则自动滚
 | `useTheme` | 三态主题状态 + `data-theme`/`.dark` 同步 + localStorage 持久化 |
 | `useIsDark` | 用 MutationObserver 监听 `.dark` class，供代码高亮选明暗样式 |
 | `useFontSize` | 字号状态（12–28px）+ `Ctrl/Cmd +/-` 快捷键 + 持久化，写入 `--font-size` 变量 |
-| `useCli` | 当前 CLI（claude/trae）+ localStorage 持久化，切换时由 App 负责清 tabs |
+| `useCli` | 当前 CLI（claude/trae/codex）+ localStorage 持久化，切换时由 App 负责清 tabs |
 | `useFavorites(cli)` | 当前 CLI 的收藏列表（localStorage key `ccreader.favorites.<cli>`），暴露 `favorites/isFavorite/toggle/remove`（`remove` 用于删除会话时同步清理收藏） |
 | `useShowTools` | "是否展示工具调用输出"开关（localStorage `ccreader.showTools`）；`MessageList` 据此跳过纯工具调用的消息，`AssistantMessage` 据此屏蔽行内的 `ToolCallBlock` |
 | `useReadingWidth` | 阅读区最大宽度档位（`narrow` 720 / `normal` 896 / `wide` 1200 / `full` 不限），localStorage key `ccreader.readingWidth`；导出 `maxWidth` 字符串供 `MessageList` 外层 `style` 使用 |
@@ -252,7 +260,7 @@ MessageList            滚动容器；新消息时若用户在底部则自动滚
 
 所有跨层类型定义在 `src/types/message.ts`，与后端 `parser.ts` 的 `ParsedMessage` 对应：
 
-- `CliId` —— `"claude" | "trae"`，所有 REST/WS 都按此路由
+- `CliId` —— `"claude" | "trae" | "codex"`，所有 REST/WS 都按此路由
 - `CliOption` —— `/api/clis` 返回的项 `{id, label}`
 - `Project` —— 项目（`name` 显示名 / `dirName` 目录名 / `sessionCount`）
 - `SessionInfo` —— 会话条目（`id` / `firstMessage` 标题 / `timestamp` / `messageCount` / 可选 `project`）
@@ -288,7 +296,7 @@ MessageList            滚动容器；新消息时若用户在底部则自动滚
 | 需求 | 改这里 |
 |------|--------|
 | 新增/调整主题配色 | `src/index.css`（加一套 `[data-theme=...]` 变量）+ `useTheme.ts`（Theme 类型与列表）+ `Toolbar.tsx`（选择器选项） |
-| 新增 CLI 数据源 | `server/sources/<new>.ts` 实现 `CliSource` + `sources/index.ts` 注册表 + `src/types/message.ts` 加 `CliId` + `Sidebar.tsx` 的 `CLI_LABELS` |
+| 新增 CLI 数据源 | `server/sources/<new>.ts` 实现 `CliSource` + `server/sources/types.ts` 的 `CliSource.id` + `server/sources/index.ts` 注册表 + `server/index.ts` 的 `/api/clis` label/启动检查 + `src/types/message.ts` 加 `CliId` + `src/hooks/useCli.ts` 持久化校验 + `Sidebar.tsx` 的 `CLI_LABELS` |
 | 改某个工具调用的摘要显示 | `src/utils/parseContent.ts` 的 `getToolSummary` |
 | 工具调用的展开/输出 UI | `src/components/ToolCallBlock.tsx` |
 | Markdown/代码/表格/链接渲染 | `src/components/MarkdownContent.tsx` |

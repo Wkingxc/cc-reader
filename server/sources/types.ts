@@ -16,7 +16,7 @@ export interface SessionListItem {
 }
 
 export interface CliSource {
-  id: "claude" | "trae";
+  id: "claude" | "trae" | "codex";
   exists(): boolean;
   listProjects(): ProjectInfo[];
   listSessions(projectDirName: string): SessionListItem[];

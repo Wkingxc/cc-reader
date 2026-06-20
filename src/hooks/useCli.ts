@@ -6,7 +6,7 @@ const STORAGE_KEY = "ccreader.cli";
 function readStored(): CliId {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "claude" || v === "trae") return v;
+    if (v === "claude" || v === "trae" || v === "codex") return v;
   } catch {
     // ignore
   }

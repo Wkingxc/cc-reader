@@ -21,9 +21,15 @@ const SHOULD_OPEN_BROWSER = process.env.CC_READER_OPEN !== "0";
 
 app.use(express.json());
 
+const CLI_LABELS: Record<string, string> = {
+  claude: "Claude Code",
+  trae: "TRAE CLI",
+  codex: "Codex CLI",
+};
+
 app.get("/api/clis", (_req, res) => {
   const ids = getAvailableCliIds();
-  res.json(ids.map((id) => ({ id, label: id === "claude" ? "Claude Code" : "TRAE CLI" })));
+  res.json(ids.map((id) => ({ id, label: CLI_LABELS[id] ?? id })));
 });
 
 app.use("/api/projects", projectsRouter);
@@ -72,9 +78,10 @@ function findOpenPort(start: number): Promise<number> {
 async function main() {
   const claudeExists = fs.existsSync(path.join(os.homedir(), ".claude"));
   const traeExists = fs.existsSync(path.join(os.homedir(), ".trae", "cli", "sessions"));
-  if (!claudeExists && !traeExists) {
+  const codexExists = fs.existsSync(path.join(os.homedir(), ".codex", "sessions"));
+  if (!claudeExists && !traeExists && !codexExists) {
     console.error(
-      `Error: neither ~/.claude nor ~/.trae/cli/sessions found. Is Claude Code or TRAE CLI installed?`
+      `Error: none of ~/.claude, ~/.trae/cli/sessions, ~/.codex/sessions found. Is Claude Code, TRAE CLI, or Codex CLI installed?`
     );
     process.exit(1);
   }

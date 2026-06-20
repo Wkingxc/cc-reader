@@ -1,6 +1,6 @@
 # CC Reader
 
-CLI 对话历史本地查看器。支持 **Claude Code**（`~/.claude/projects/`）和 **TRAE CLI**（`~/.trae/cli/sessions/`）—— 把枯燥的 JSONL 日志变成浏览器里可以舒适阅读的对话界面。
+CLI 对话历史本地查看器。支持 **Claude Code**（`~/.claude/projects/`）、**TRAE CLI**（`~/.trae/cli/sessions/`）和 **Codex CLI**（`~/.codex/sessions/`）—— 把枯燥的 JSONL 日志变成浏览器里可以舒适阅读的对话界面。
 
 > 纯本地运行，不上传任何数据，不需要联网，不需要 API Key。
 
@@ -10,7 +10,7 @@ CLI 对话历史本地查看器。支持 **Claude Code**（`~/.claude/projects/`
 
 | 功能 | 说明 |
 |------|------|
-| **多 CLI 切换** | 左上角下拉切换 Claude Code / TRAE CLI，状态独立 |
+| **多 CLI 切换** | 左上角下拉切换 Claude Code / TRAE CLI / Codex CLI，状态独立 |
 | **Markdown 渲染** | 代码块语法高亮、表格、链接、引用块完整支持 |
 | **LaTeX 公式** | 通过 KaTeX 渲染行内与块级数学公式 |
 | **图片显示** | Claude 会话里粘贴的图片自动渲染（按需流式加载，可点开原图） |
@@ -43,7 +43,7 @@ CLI 对话历史本地查看器。支持 **Claude Code**（`~/.claude/projects/`
 ### 环境要求
 
 - **Node.js** 18 或更高（`node -v` 查看）
-- **Claude Code** 或 **TRAE CLI**（至少一个）—— 对话历史分别存储在 `~/.claude/projects/` 与 `~/.trae/cli/sessions/`
+- **Claude Code**、**TRAE CLI** 或 **Codex CLI**（至少一个）—— 对话历史分别存储在 `~/.claude/projects/`、`~/.trae/cli/sessions/` 与 `~/.codex/sessions/`
 - 支持 macOS / Linux / Windows
 
 ### 安装

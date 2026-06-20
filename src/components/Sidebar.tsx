@@ -80,6 +80,7 @@ interface Props {
 const CLI_LABELS: Record<CliId, string> = {
   claude: "Claude Code",
   trae: "TRAE CLI",
+  codex: "Codex CLI",
 };
 
 export default function Sidebar({

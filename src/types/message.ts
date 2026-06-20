@@ -1,4 +1,4 @@
-export type CliId = "claude" | "trae";
+export type CliId = "claude" | "trae" | "codex";
 
 export interface CliOption {
   id: CliId;
