@@ -30,6 +30,10 @@ export interface Message {
   type: "user" | "assistant";
   timestamp: string;
   content: MessageContent;
+  // assistant 一轮回复里被工具调用打断的各段文字（终端里的每个 ● 白点），
+  // 按时间顺序保留。前端据此把中间旁白折叠、只展示最后一段收尾总结。
+  // 与后端 ParsedMessage.segments 对齐；content 仍为全部段拼接。
+  segments?: string[];
   toolCalls?: ToolCall[];
   model?: string;
   images?: ImageRef[];

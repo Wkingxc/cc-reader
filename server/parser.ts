@@ -8,6 +8,10 @@ export interface ParsedMessage {
   type: "user" | "assistant";
   timestamp: string;
   content: string | Array<Record<string, unknown>>;
+  // assistant 一轮回复里被工具调用打断的各段文字（终端里的每个 ● 白点），
+  // 按时间顺序保留。前端用它把「中间旁白」折叠、只展示最后一段收尾总结。
+  // content 仍为全部段拼接，向后兼容搜索/标题等逻辑。
+  segments?: string[];
   toolCalls?: Array<{
     id: string;
     name: string;
@@ -65,12 +69,19 @@ export function mergeMessages(raw: ParsedMessage[]): ParsedMessage[] {
       }
       if (msg.type === "assistant") {
         prev.model = msg.model || prev.model;
+        // 把这次合并进来的文字作为新的一段（白点）保留下来。
+        if (curText.trim()) prev.segments!.push(curText);
         if (msg.toolCalls?.length) {
           prev.toolCalls = [...(prev.toolCalls ?? []), ...msg.toolCalls];
         }
       }
     } else {
-      merged.push({ ...msg, content: extractText(msg.content) });
+      const text = extractText(msg.content);
+      const next: ParsedMessage = { ...msg, content: text };
+      if (msg.type === "assistant") {
+        next.segments = text.trim() ? [text] : [];
+      }
+      merged.push(next);
     }
   }
 
