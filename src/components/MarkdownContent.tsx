@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -11,6 +11,39 @@ import { unwrapInlineMath } from "../utils/parseContent";
 
 interface Props {
   content: string;
+}
+
+function CopyButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore clipboard errors
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="cc-code-copy"
+      aria-label={copied ? "已复制" : "复制代码"}
+      title={copied ? "已复制" : "复制"}
+    >
+      {copied ? (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      ) : (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="9" width="11" height="11" rx="2" />
+          <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+        </svg>
+      )}
+    </button>
+  );
 }
 
 export default function MarkdownContent({ content }: Props) {
@@ -28,28 +61,34 @@ export default function MarkdownContent({ content }: Props) {
 
           if (match) {
             return (
-              <SyntaxHighlighter
-                style={isDark ? oneDark : oneLight}
-                language={match[1]}
-                PreTag="div"
-                customStyle={{
-                  fontSize: "var(--font-size)",
-                  borderRadius: "10px",
-                  margin: "8px 0",
-                  background: "var(--c-code-bg)",
-                  border: "1px solid var(--c-edge)",
-                }}
-              >
-                {code}
-              </SyntaxHighlighter>
+              <div className="cc-code-block">
+                <CopyButton code={code} />
+                <SyntaxHighlighter
+                  style={isDark ? oneDark : oneLight}
+                  language={match[1]}
+                  PreTag="div"
+                  customStyle={{
+                    fontSize: "var(--font-size)",
+                    borderRadius: "10px",
+                    margin: "8px 0",
+                    background: "var(--c-code-bg)",
+                    border: "1px solid var(--c-edge)",
+                  }}
+                >
+                  {code}
+                </SyntaxHighlighter>
+              </div>
             );
           }
           if (code.includes("\n")) {
             return (
-              <div className="bg-[var(--c-code-bg)] border border-edge rounded-lg p-4 my-2 overflow-x-auto">
-                <code className="text-sm" style={{ whiteSpace: "pre", display: "block", fontFamily: "inherit" }}>
-                  {code}
-                </code>
+              <div className="cc-code-block">
+                <CopyButton code={code} />
+                <div className="bg-[var(--c-code-bg)] border border-edge rounded-lg p-4 my-2 overflow-x-auto">
+                  <code className="text-sm" style={{ whiteSpace: "pre", display: "block", fontFamily: "inherit" }}>
+                    {code}
+                  </code>
+                </div>
               </div>
             );
           }

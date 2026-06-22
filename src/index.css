@@ -423,3 +423,40 @@ body {
 [data-theme="blue"] .cc-inline-code {
   color: var(--c-sel-ink);
 }
+
+/* 代码块右上角的复制按钮：默认半透明、悬停时显式 */
+.cc-code-block {
+  position: relative;
+}
+
+.cc-code-copy {
+  position: absolute;
+  top: 14px;
+  right: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--c-edge) 70%, transparent);
+  background: color-mix(in srgb, var(--c-surface) 70%, transparent);
+  color: var(--c-dim);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  backdrop-filter: blur(6px);
+}
+
+.cc-code-block:hover .cc-code-copy,
+.cc-code-copy:focus-visible {
+  opacity: 1;
+}
+
+.cc-code-copy:hover {
+  color: var(--c-accent);
+  border-color: color-mix(in srgb, var(--c-accent) 45%, var(--c-edge));
+  background: color-mix(in srgb, var(--c-surface) 92%, transparent);
+}
