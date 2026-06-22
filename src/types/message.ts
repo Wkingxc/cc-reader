@@ -34,6 +34,9 @@ export interface Message {
   // 按时间顺序保留。前端据此把中间旁白折叠、只展示最后一段收尾总结。
   // 与后端 ParsedMessage.segments 对齐；content 仍为全部段拼接。
   segments?: string[];
+  // 后端标记的合成占位条目（model:"<synthetic>"）：/rename、/resume 等本地
+  // 命令后的 "No response requested."、"API Error: ..." 等系统事件。
+  synthetic?: boolean;
   toolCalls?: ToolCall[];
   model?: string;
   images?: ImageRef[];

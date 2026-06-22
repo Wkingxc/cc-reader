@@ -117,6 +117,9 @@ function entryToMessage(
     model: entry.message.model,
   };
   if (images) msg.images = images;
+  if (entry.type === "assistant" && entry.message.model === "<synthetic>") {
+    msg.synthetic = true;
+  }
 
   if (entry.type === "assistant" && Array.isArray(entry.message.content)) {
     const toolCalls = (entry.message.content as Array<Record<string, unknown>>)

@@ -12,6 +12,11 @@ export interface ParsedMessage {
   // 按时间顺序保留。前端用它把「中间旁白」折叠、只展示最后一段收尾总结。
   // content 仍为全部段拼接，向后兼容搜索/标题等逻辑。
   segments?: string[];
+  // Claude Code 在 /rename、/resume、/clear 等纯本地命令后会写入一条
+  // model:"<synthetic>" 的合成 assistant 条目（"No response requested."、
+  // "API Error: ..." 等）。它不是模型对上一条用户消息的回复，因此既不能与
+  // 相邻真实回复合并（否则污染其 segments），渲染上也要单独处理。
+  synthetic?: boolean;
   toolCalls?: Array<{
     id: string;
     name: string;
@@ -58,7 +63,9 @@ export function mergeMessages(raw: ParsedMessage[]): ParsedMessage[] {
 
   for (const msg of raw) {
     const prev = merged[merged.length - 1];
-    if (prev && prev.type === msg.type) {
+    // synthetic 占位条目自成一条，绝不与前后真实回复合并：否则它会被当成
+    // 同一轮的新一段白点 push 进 segments，把真实收尾挤进折叠区。
+    if (prev && prev.type === msg.type && !prev.synthetic && !msg.synthetic) {
       const prevText = extractText(prev.content);
       const curText = extractText(msg.content);
       const combined = [prevText, curText].filter(Boolean).join("\n\n");
