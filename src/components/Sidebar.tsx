@@ -113,6 +113,7 @@ export default function Sidebar({
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const isSearching = search.trim().length > 0;
   const favoriteProjects = useMemo(
@@ -168,6 +169,45 @@ export default function Sidebar({
       // leave previous list intact
     } finally {
       setRecentLoadingMore(false);
+    }
+  };
+
+  // Refresh the project list and recent sessions, plus any per-project session
+  // caches that are already loaded. Keeps tree expansion/selection state and
+  // does not touch open tabs (managed by App).
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const loadedProjects = Object.keys(sessions);
+      const [projectsData, recentData, ...sessionLists] = await Promise.all([
+        fetch(`/api/projects?cli=${cli}`).then((r) => r.json()) as Promise<Project[]>,
+        fetch(`/api/sessions/recent?cli=${cli}&limit=${recentLimit + 1}`).then((r) =>
+          r.json()
+        ) as Promise<SessionInfo[]>,
+        ...loadedProjects.map(
+          (project) =>
+            fetch(`/api/sessions/${project}?cli=${cli}`)
+              .then((r) => r.json())
+              .catch(() => [] as SessionInfo[]) as Promise<SessionInfo[]>
+        ),
+      ]);
+      setProjects(projectsData);
+      setRecentHasMore(recentData.length > recentLimit);
+      setRecentSessions(recentData.slice(0, recentLimit));
+      if (loadedProjects.length > 0) {
+        setSessions((prev) => {
+          const next = { ...prev };
+          loadedProjects.forEach((project, i) => {
+            next[project] = sessionLists[i];
+          });
+          return next;
+        });
+      }
+    } catch {
+      // best-effort; keep existing UI on failure
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -403,6 +443,19 @@ export default function Sidebar({
             </div>
           )}
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="p-1.5 rounded hover:bg-accent-soft text-dim transition-colors text-sm shrink-0 disabled:opacity-50"
+          title="刷新会话列表"
+          aria-label="刷新会话列表"
+        >
+          <span
+            className={`inline-block ${refreshing ? "animate-spin" : ""}`}
+          >
+            ↻
+          </span>
+        </button>
         <button
           onClick={onToggleCollapse}
           className="p-1.5 rounded hover:bg-accent-soft text-dim transition-colors text-sm shrink-0"
