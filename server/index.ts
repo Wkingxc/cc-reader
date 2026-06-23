@@ -4,7 +4,6 @@ import { WebSocketServer, WebSocket } from "ws";
 import * as path from "path";
 import * as fs from "fs";
 import * as net from "net";
-import * as os from "os";
 import { exec } from "child_process";
 import { fileURLToPath } from "url";
 import projectsRouter from "./routes/projects.js";
@@ -76,12 +75,10 @@ function findOpenPort(start: number): Promise<number> {
 }
 
 async function main() {
-  const claudeExists = fs.existsSync(path.join(os.homedir(), ".claude"));
-  const traeExists = fs.existsSync(path.join(os.homedir(), ".trae", "cli", "sessions"));
-  const codexExists = fs.existsSync(path.join(os.homedir(), ".codex", "sessions"));
-  if (!claudeExists && !traeExists && !codexExists) {
+  const availableCliIds = getAvailableCliIds();
+  if (availableCliIds.length === 0) {
     console.error(
-      `Error: none of ~/.claude, ~/.trae/cli/sessions, ~/.codex/sessions found. Is Claude Code, TRAE CLI, or Codex CLI installed?`
+      `Error: none of ~/.claude, TraeX sessions, or ~/.codex/sessions found. Is Claude Code, TraeX, or Codex CLI installed?`
     );
     process.exit(1);
   }

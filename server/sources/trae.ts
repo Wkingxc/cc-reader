@@ -21,10 +21,30 @@ interface SessionSummary {
   cwd: string;
   startedAt: string;
   mtime: string;
+  title?: string;
+}
+
+interface SessionIndexEntry {
+  title?: string;
+  updatedAt?: string;
+}
+
+function getTraeCliRoot(): string {
+  if (process.env.TRAE_CLI_HOME) {
+    return process.env.TRAE_CLI_HOME;
+  }
+  if (process.env.TRAE_HOME) {
+    return path.join(process.env.TRAE_HOME, "cli");
+  }
+  return path.join(os.homedir(), ".trae", "cli");
 }
 
 function getTraeSessionsDir(): string {
-  return path.join(os.homedir(), ".trae", "cli", "sessions");
+  return path.join(getTraeCliRoot(), "sessions");
+}
+
+function getTraeSessionIndexPath(): string {
+  return path.join(getTraeCliRoot(), "session_index.jsonl");
 }
 
 function encodeCwdAsDirName(cwd: string): string {
@@ -54,31 +74,111 @@ function parseLine(line: string): TraeRolloutLine | null {
   }
 }
 
+function readSessionTitleIndex(): Map<string, SessionIndexEntry> {
+  const filePath = getTraeSessionIndexPath();
+  const titles = new Map<string, SessionIndexEntry>();
+  if (!fs.existsSync(filePath)) return titles;
+
+  try {
+    const content = fs.readFileSync(filePath, "utf-8");
+    const lines = content.split("\n").filter((l) => l.trim());
+    for (const line of lines) {
+      const obj = parseLine(line);
+      if (!obj) continue;
+      const id = String(obj.id || "");
+      const title =
+        typeof obj.thread_name === "string" ? obj.thread_name.trim() : "";
+      const updatedAt =
+        typeof obj.updated_at === "string" ? obj.updated_at : undefined;
+      if (!id) continue;
+      titles.set(id, {
+        title: title || undefined,
+        updatedAt,
+      });
+    }
+  } catch {
+    // best-effort: missing or malformed index should not hide sessions.
+  }
+
+  return titles;
+}
+
+function readFirstLine(filePath: string): string | null {
+  let fd: number | null = null;
+  try {
+    fd = fs.openSync(filePath, "r");
+    const chunks: Buffer[] = [];
+    let position = 0;
+    let newlineAt = -1;
+
+    while (newlineAt < 0) {
+      const buf = Buffer.alloc(8192);
+      const n = fs.readSync(fd, buf, 0, buf.length, position);
+      if (n === 0) break;
+      const chunk = buf.subarray(0, n);
+      newlineAt = chunk.indexOf(10);
+      chunks.push(newlineAt >= 0 ? chunk.subarray(0, newlineAt) : chunk);
+      position += n;
+    }
+
+    if (chunks.length === 0) return null;
+    return Buffer.concat(chunks).toString("utf-8");
+  } catch {
+    return null;
+  } finally {
+    if (fd !== null) fs.closeSync(fd);
+  }
+}
+
 function readSessionMeta(filePath: string): {
   id: string;
   cwd: string;
   startedAt: string;
 } | null {
+  const firstLine = readFirstLine(filePath);
+  if (!firstLine) return null;
+  const obj = parseLine(firstLine);
+  if (!obj || obj.type !== "session_meta") return null;
+  const p = obj.payload as Record<string, unknown> | undefined;
+  if (!p) return null;
+  const id = String(p.id || "");
+  const cwd = String(p.cwd || "");
+  const startedAt = String(p.timestamp || obj.timestamp || "");
+  if (!id || !cwd) return null;
+  return { id, cwd, startedAt };
+}
+
+function hasDisplayableSessionContent(filePath: string): boolean {
   try {
-    const fd = fs.openSync(filePath, "r");
-    const buf = Buffer.alloc(8192);
-    const n = fs.readSync(fd, buf, 0, buf.length, 0);
-    fs.closeSync(fd);
-    const text = buf.slice(0, n).toString("utf-8");
-    const firstNewline = text.indexOf("\n");
-    const firstLine = firstNewline >= 0 ? text.slice(0, firstNewline) : text;
-    const obj = parseLine(firstLine);
-    if (!obj || obj.type !== "session_meta") return null;
-    const p = obj.payload as Record<string, unknown> | undefined;
-    if (!p) return null;
-    const id = String(p.id || "");
-    const cwd = String(p.cwd || "");
-    const startedAt = String(p.timestamp || obj.timestamp || "");
-    if (!id || !cwd) return null;
-    return { id, cwd, startedAt };
+    const content = fs.readFileSync(filePath, "utf-8");
+    const lines = content.split("\n").filter((l) => l.trim());
+    for (const line of lines) {
+      const obj = parseLine(line);
+      if (!obj || obj.type !== "response_item") continue;
+      const p = obj.payload || {};
+      if (p.type === "function_call") return true;
+      if (p.type !== "message") continue;
+
+      const role = p.role as string | undefined;
+      if (role !== "user" && role !== "assistant") continue;
+      const blocks = (p.content as Array<Record<string, unknown>> | undefined) ?? [];
+      const hasText = blocks.some((b) => {
+        if (
+          b.type !== "input_text" &&
+          b.type !== "output_text" &&
+          b.type !== "text"
+        ) {
+          return false;
+        }
+        if (typeof b.text !== "string") return false;
+        return role === "assistant" || !isSyntheticUserText(b.text);
+      });
+      if (hasText) return true;
+    }
   } catch {
-    return null;
+    return false;
   }
+  return false;
 }
 
 function listAllRolloutFiles(): string[] {
@@ -123,6 +223,7 @@ function refreshIndex(force = false): void {
   if (!force && cache && now - cache.scannedAt < CACHE_TTL_MS) return;
 
   const files = listAllRolloutFiles();
+  const titleIndex = readSessionTitleIndex();
   const byId = new Map<string, SessionSummary>();
   const byProject = new Map<string, SessionSummary[]>();
   const projectAccum = new Map<string, ProjectInfo>();
@@ -130,6 +231,7 @@ function refreshIndex(force = false): void {
   for (const filePath of files) {
     const meta = readSessionMeta(filePath);
     if (!meta) continue;
+    if (!hasDisplayableSessionContent(filePath)) continue;
     let stat: fs.Stats;
     try {
       stat = fs.statSync(filePath);
@@ -141,7 +243,8 @@ function refreshIndex(force = false): void {
       filePath,
       cwd: meta.cwd,
       startedAt: meta.startedAt,
-      mtime: stat.mtime.toISOString(),
+      mtime: titleIndex.get(meta.id)?.updatedAt ?? stat.mtime.toISOString(),
+      title: titleIndex.get(meta.id)?.title,
     };
     byId.set(meta.id, summary);
 
@@ -304,7 +407,7 @@ function summaryToListItem(s: SessionSummary): SessionListItem {
   let firstMessage = "(empty)";
   let messageCount = 0;
   try {
-    firstMessage = parseFirstUserText(s.filePath);
+    firstMessage = s.title || parseFirstUserText(s.filePath);
     const content = fs.readFileSync(s.filePath, "utf-8");
     messageCount = content.split("\n").filter((l) => l.trim()).length;
   } catch {

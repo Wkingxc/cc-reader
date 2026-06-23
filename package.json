@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"tsx watch server/index.ts\"",
     "build": "vite build",
+    "test": "tsx --test server/**/*.test.ts",
     "start": "vite build && tsx server/index.ts",
     "server": "tsx server/index.ts"
   },

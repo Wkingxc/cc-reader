@@ -7,6 +7,11 @@ export function useWebSocket(onNewMessages: (msgs: Message[]) => void) {
   const reconnectTimeout = useRef<ReturnType<typeof setTimeout>>();
   const retryDelay = useRef(1000);
   const onNewMessagesRef = useRef(onNewMessages);
+  const watchTargetRef = useRef<{
+    cli: CliId;
+    project: string;
+    session: string;
+  } | null>(null);
   onNewMessagesRef.current = onNewMessages;
 
   const connect = useCallback(() => {
@@ -16,6 +21,10 @@ export function useWebSocket(onNewMessages: (msgs: Message[]) => void) {
     ws.onopen = () => {
       setConnected(true);
       retryDelay.current = 1000;
+      const target = watchTargetRef.current;
+      if (target) {
+        ws.send(JSON.stringify({ type: "watch", ...target }));
+      }
     };
 
     ws.onmessage = (event) => {
@@ -49,12 +58,14 @@ export function useWebSocket(onNewMessages: (msgs: Message[]) => void) {
   }, [connect]);
 
   const watch = useCallback((cli: CliId, project: string, session: string) => {
+    watchTargetRef.current = { cli, project, session };
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "watch", cli, project, session }));
     }
   }, []);
 
   const unwatch = useCallback(() => {
+    watchTargetRef.current = null;
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "unwatch" }));
     }
